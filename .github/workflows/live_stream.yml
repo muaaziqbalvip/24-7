@@ -1,4 +1,4 @@
-name: MiTV Pro Engine (Copyright Safe)
+name: MiTV Ultimate 24/7 Engine
 
 on:
   workflow_dispatch:
@@ -7,12 +7,14 @@ on:
         description: 'Video URL (Direct link)'
         required: true
       audio_link:
-        description: 'Custom Audio URL (Optional - leave empty for original)'
+        description: 'Custom Audio URL (Optional)'
         required: false
         default: ''
       stream_key:
         description: 'YouTube Stream Key'
         required: true
+  schedule:
+    - cron: '0 */6 * * *' # Har 6 ghante baad auto-restart logic
 
 jobs:
   broadcast:
@@ -22,48 +24,50 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install Media Tools
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Start 24/7 Engine
+      - name: Start Unstoppable Stream
         run: |
           VIDEO="${{ github.event.inputs.video_link }}"
           AUDIO="${{ github.event.inputs.audio_link }}"
           KEY="${{ github.event.inputs.stream_key }}"
           LOGO="logon.png"
 
+          # Infinite Loop for stability
           while true; do
-            echo "--- MiTV Station Online for Muaaz Iqbal ---"
+            echo "--- MiTV Station Online | 24/7 Mode Active ---"
 
-            # 1. Media & Copyright Logic
+            # 1. Copyright Safety Logic
             if [ -z "$AUDIO" ]; then
-              # Sirf Video hai: Audio ki pitch badal do (Copyright Safety)
+              # Agar sirf video hai to audio ki pitch badal do taake copyright na aaye
               INPUTS="-re -stream_loop -1 -i $VIDEO"
               AUDIO_FILTER="asetrate=44100*1.05,atempo=0.95"
               AMAP="0:a"
             else
-              # Custom Audio hai: No pitch change needed
+              # Agar custom audio hai
               INPUTS="-re -stream_loop -1 -i $VIDEO -re -i $AUDIO"
               AUDIO_FILTER="copy"
               AMAP="1:a"
             fi
 
-            # 2. Visual Filters (Logo + Live Time Box)
-            # Time logic direct FFmpeg se: %{localtime\:%I\:%M\:%S %p}
+            # 2. Visual Filter (Sirf Logo - No Time/Patti to avoid errors)
             V_FILTER="[0:v]scale=1280:720[bg]; \
-            movie=$LOGO,scale=130:-1[logo_img];[bg][logo_img]overlay=20:20[v_logo]; \
-            [v_logo]drawbox=y=130:x=20:w=260:h=90:color=black@0.6:t=fill[box]; \
-            [box]drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='%{localtime\\:%I\\:%M\\:%S %p}':x=40:y=150:fontsize=30:fontcolor=white[t1]; \
-            [t1]drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='%{localtime\\:%d-%b-%Y}':x=40:y=185:fontsize=20:fontcolor=yellow[final_v]"
+            movie=$LOGO,scale=130:-1[logo_img];[bg][logo_img]overlay=20:20"
 
-            # 3. Execution
+            # 3. High Capability Streaming Command
+            # Using stable bitrate and gop for YouTube Live
             if [ "$AUDIO_FILTER" == "copy" ]; then
-              ffmpeg -y $INPUTS -filter_complex "$V_FILTER" -map "[final_v]" -map $AMAP \
-              -c:v libx264 -preset veryfast -b:v 3000k -c:a aac -b:a 128k -f flv "rtmp://a.rtmp.youtube.com/live2/$KEY"
+              ffmpeg -y $INPUTS -filter_complex "$V_FILTER" -map "0:v" -map $AMAP \
+              -c:v libx264 -preset veryfast -b:v 3500k -maxrate 3500k -bufsize 7000k \
+              -pix_fmt yuv420p -g 60 -c:a aac -b:a 128k -ar 44100 \
+              -f flv "rtmp://a.rtmp.youtube.com/live2/$KEY"
             else
-              ffmpeg -y $INPUTS -filter_complex "$V_FILTER" -filter:a "$AUDIO_FILTER" -map "[final_v]" -map $AMAP \
-              -c:v libx264 -preset veryfast -b:v 3000k -c:a aac -b:a 128k -f flv "rtmp://a.rtmp.youtube.com/live2/$KEY"
+              ffmpeg -y $INPUTS -filter_complex "$V_FILTER" -filter:a "$AUDIO_FILTER" -map "0:v" -map $AMAP \
+              -c:v libx264 -preset veryfast -b:v 3500k -maxrate 3500k -bufsize 7000k \
+              -pix_fmt yuv420p -g 60 -c:a aac -b:a 128k -ar 44100 \
+              -f flv "rtmp://a.rtmp.youtube.com/live2/$KEY"
             fi
 
-            echo "Restarting in 5s..."
+            echo "Connection dropped. Reconnecting in 5 seconds..."
             sleep 5
           done
