@@ -1,90 +1,73 @@
-name: MiTV Ultimate 24/7 Engine (Full Logic)
+name: MiTV Final Smooth Engine
 
 on:
   workflow_dispatch:
     inputs:
       video_link:
-        description: 'Main Video URL (Direct Link)'
+        description: 'Main Video URL'
         required: true
       audio_link:
-        description: 'Custom Audio URL (Optional - Replaces Video Audio)'
+        description: 'Custom Audio URL (Optional)'
         required: false
-        default: ''
       logo_link:
-        description: 'Logo URL (PNG or MP4)'
+        description: 'Logo URL (PNG/JPG/MP4)'
         required: true
         default: 'https://raw.githubusercontent.com/muaaziqbal/MiTV/main/logon.png'
       stream_key:
         description: 'YouTube Stream Key'
         required: true
 
-  schedule:
-    - cron: '0 */6 * * *' # Auto-restart logic every 6 hours
-
 jobs:
   broadcast:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Install Media Tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg curl fonts-dejavu
+      - name: Setup Environment
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg curl
 
-      - name: Prepare Assets
+      - name: Download Logo
         run: |
-          # Logo download logic taake "File Not Found" error na aaye
-          curl -L "${{ github.event.inputs.logo_link }}" -o logo_overlay
-          echo "Asset Ready: logo_overlay"
+          # Logo ko link se download kar ke 'mitv_logo' ke naam se save karna
+          curl -L "${{ github.event.inputs.logo_link }}" -o mitv_logo
+          echo "Logo Downloaded Successfully"
 
-      - name: Run 24/7 Professional Stream
+      - name: Start 24/7 Unstoppable Stream
         run: |
-          # Variables definition
           VIDEO="${{ github.event.inputs.video_link }}"
           AUDIO="${{ github.event.inputs.audio_link }}"
           KEY="${{ github.event.inputs.stream_key }}"
           
-          # Infinite loop for 24/7 stability
           while true; do
-            echo "--- MiTV Station Starting | Professional Mode ---"
+            echo "--- MiTV Station Starting for Muaaz ---"
 
-            # ---------------------------------------------------------
-            # FULL LOGIC FOR AUDIO & VIDEO INPUTS
-            # ---------------------------------------------------------
-            if [ -n "$AUDIO" ]; then
-                echo "Custom Audio Detected. Combining Video + Custom Audio."
-                # Scenario: Custom Audio provided (No pitch change needed for custom audio)
-                INPUTS="-re -stream_loop -1 -i $VIDEO -re -i $AUDIO"
-                A_FILTER="copy"
-                AMAP="1:a"
+            # 1. AUDIO LOGIC (If user gives audio, use it. Else use video audio with Copyright Pitch)
+            if [ -z "$AUDIO" ]; then
+              echo "Using Video Audio + Copyright Shield"
+              INPUTS="-re -stream_loop -1 -i $VIDEO -stream_loop -1 -i mitv_logo"
+              A_FILT="asetrate=44100*1.05,atempo=0.95"
+              AMAP="0:a"
             else
-                echo "No Custom Audio. Using Original Audio with Copyright Protection."
-                # Scenario: Original Audio (Apply Pitch 1.05x & Tempo 0.95x for Copyright Shield)
-                INPUTS="-re -stream_loop -1 -i $VIDEO"
-                A_FILTER="asetrate=44100*1.05,atempo=0.95"
-                AMAP="0:a"
+              echo "Using Custom Audio Link"
+              INPUTS="-re -stream_loop -1 -i $VIDEO -re -i $AUDIO -stream_loop -1 -i mitv_logo"
+              A_FILT="copy"
+              AMAP="1:a"
             fi
 
-            # ---------------------------------------------------------
-            # FFMPEG EXECUTION WITH DYNAMIC MAPPING
-            # ---------------------------------------------------------
-            # Logo Resizing & Overlay
-            # High Quality Settings: 3500k Bitrate, 60 GOP
-            
+            # 2. VIDEO LOGIC (Logo Overlay)
+            # Filter complex mein 0:v (video) aur 2:v (logo) ko merge karna
+            # Note: Agar audio link hai to logo 2:v par hai, warna 1:v par
+            if [ -z "$AUDIO" ]; then L_IDX="1"; else L_IDX="2"; fi
+
             ffmpeg -y $INPUTS \
-            -stream_loop -1 -i logo_overlay \
-            -filter_complex \
-            "[0:v]scale=1280:720[bg]; \
-             [2:v]scale=130:-1[logo_resized]; \
-             [bg][logo_resized]overlay=20:20[final_v]" \
-            -filter:a "$A_FILTER" \
-            -map "[final_v]" -map $AMAP \
-            -c:v libx264 -preset veryfast -b:v 3500k -maxrate 3500k -bufsize 7000k \
+            -filter_complex "[0:v]scale=1280:720[bg];[$L_IDX:v]scale=130:-1[logo];[bg][logo]overlay=20:20" \
+            -filter:a "$A_FILT" \
+            -map 0:v -map $AMAP \
+            -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k \
             -pix_fmt yuv420p -g 60 -c:a aac -b:a 128k -ar 44100 \
             -f flv "rtmp://a.rtmp.youtube.com/live2/$KEY"
 
-            echo "Stream re-connecting in 5 seconds..."
+            echo "Stream crashed or finished. Restarting in 5s..."
             sleep 5
           done
