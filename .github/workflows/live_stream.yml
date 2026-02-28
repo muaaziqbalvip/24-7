@@ -1,49 +1,48 @@
-name: MiTV Network 24/7 Professional Stream
+name: MiTV 24/7 Professional Stream Engine
 
 on:
   workflow_dispatch:
     inputs:
       video_link:
-        description: 'Enter Video Link (mp4, m3u8, mkv, mpd)'
+        description: 'Video Link (mp4, m3u8, mkv, mpd)'
         required: false
-        default: ''
       audio_link:
-        description: 'Enter Audio Link (Optional)'
+        description: 'Audio Link (Optional)'
         required: false
-        default: ''
       stream_key:
         description: 'YouTube Stream Key'
         required: true
       patti_color:
-        description: 'Bottom Patti Color (e.g., red, blue, black)'
-        required: false
+        description: 'Patti Color (red, blue, black, green)'
         default: 'blue'
       show_patti:
         description: 'Show Bottom Patti? (yes/no)'
-        required: true
         default: 'yes'
   schedule:
-    - cron: '0 */6 * * *' # Har 6 ghante baad auto-restart backup
+    - cron: '0 */6 * * *' # Auto-restart logic for 24/7
 
 jobs:
-  stream:
+  stream-job:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Setup Python
+      - name: Setup Python 3.11
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.11' # Updated version to fix Google Auth warnings
 
-      - name: Install Dependencies
+      - name: Install System Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg fonts-dejavu
+
+      - name: Install Python Libraries
+        run: |
           pip install firebase-admin pytz requests
 
-      - name: Run 24/7 Stream Engine
+      - name: Run MiTV Stream Engine
         env:
           FIREBASE_CONFIG: ${{ secrets.FIREBASE_CONFIG }}
         run: |
