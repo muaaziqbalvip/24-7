@@ -10,7 +10,7 @@ on:
         description: 'Custom Audio URL (Optional)'
         required: false
       logo_link:
-        description: 'Logo URL (PNG/JPG/MP4)'
+        description: 'Logo URL (PNG/JPG)'
         required: true
         default: 'https://raw.githubusercontent.com/muaaziqbal/MiTV/main/logon.png'
       stream_key:
@@ -24,14 +24,14 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Setup Environment
+      - name: Setup Tools
         run: sudo apt-get update && sudo apt-get install -y ffmpeg curl
 
-      - name: Download Logo
+      - name: Prepare Assets
         run: |
-          # Logo ko link se download kar ke 'mitv_logo' ke naam se save karna
-          curl -L "${{ github.event.inputs.logo_link }}" -o mitv_logo
-          echo "Logo Downloaded Successfully"
+          # Logo download logic taake "File Not Found" error khatam ho jaye
+          curl -L "${{ github.event.inputs.logo_link }}" -o mitv_logo.png
+          echo "Logo Ready"
 
       - name: Start 24/7 Unstoppable Stream
         run: |
@@ -39,35 +39,30 @@ jobs:
           AUDIO="${{ github.event.inputs.audio_link }}"
           KEY="${{ github.event.inputs.stream_key }}"
           
+          # 24/7 loop logic
           while true; do
             echo "--- MiTV Station Starting for Muaaz ---"
 
-            # 1. AUDIO LOGIC (If user gives audio, use it. Else use video audio with Copyright Pitch)
-            if [ -z "$AUDIO" ]; then
-              echo "Using Video Audio + Copyright Shield"
-              INPUTS="-re -stream_loop -1 -i $VIDEO -stream_loop -1 -i mitv_logo"
-              A_FILT="asetrate=44100*1.05,atempo=0.95"
-              AMAP="0:a"
+            # SIMPLEST FFMPEG LOGIC:
+            # Agar audio link hai to 3 inputs honge, warna 2.
+            if [ -n "$AUDIO" ]; then
+              ffmpeg -y -re -stream_loop -1 -i "$VIDEO" -re -i "$AUDIO" -stream_loop -1 -i mitv_logo.png \
+              -filter_complex "[0:v]scale=1280:720[bg];[2:v]scale=130:-1[logo];[bg][logo]overlay=20:20" \
+              -map 0:v -map 1:a \
+              -c:v libx264 -preset veryfast -b:v 2500k -maxrate 2500k -bufsize 5000k \
+              -pix_fmt yuv420p -g 60 -c:a aac -b:a 128k -ar 44100 \
+              -f flv "rtmp://a.rtmp.youtube.com/live2/$KEY"
             else
-              echo "Using Custom Audio Link"
-              INPUTS="-re -stream_loop -1 -i $VIDEO -re -i $AUDIO -stream_loop -1 -i mitv_logo"
-              A_FILT="copy"
-              AMAP="1:a"
+              # Original Audio with Pitch Shift (Copyright Safety)
+              ffmpeg -y -re -stream_loop -1 -i "$VIDEO" -stream_loop -1 -i mitv_logo.png \
+              -filter_complex "[0:v]scale=1280:720[bg];[1:v]scale=130:-1[logo];[bg][logo]overlay=20:20" \
+              -af "asetrate=44100*1.05,atempo=0.95" \
+              -map 0:v -map 0:a \
+              -c:v libx264 -preset veryfast -b:v 2500k -maxrate 2500k -bufsize 5000k \
+              -pix_fmt yuv420p -g 60 -c:a aac -b:a 128k -ar 44100 \
+              -f flv "rtmp://a.rtmp.youtube.com/live2/$KEY"
             fi
 
-            # 2. VIDEO LOGIC (Logo Overlay)
-            # Filter complex mein 0:v (video) aur 2:v (logo) ko merge karna
-            # Note: Agar audio link hai to logo 2:v par hai, warna 1:v par
-            if [ -z "$AUDIO" ]; then L_IDX="1"; else L_IDX="2"; fi
-
-            ffmpeg -y $INPUTS \
-            -filter_complex "[0:v]scale=1280:720[bg];[$L_IDX:v]scale=130:-1[logo];[bg][logo]overlay=20:20" \
-            -filter:a "$A_FILT" \
-            -map 0:v -map $AMAP \
-            -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k \
-            -pix_fmt yuv420p -g 60 -c:a aac -b:a 128k -ar 44100 \
-            -f flv "rtmp://a.rtmp.youtube.com/live2/$KEY"
-
-            echo "Stream crashed or finished. Restarting in 5s..."
+            echo "Restarting in 5s..."
             sleep 5
           done
