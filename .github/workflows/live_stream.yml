@@ -1,54 +1,86 @@
-name: MiTV 24/7 Professional Stream Engine
+name: MiTV Ultimate Solo Engine (No Python)
 
 on:
   workflow_dispatch:
     inputs:
       video_link:
-        description: 'Video Link (mp4, m3u8, mkv, mpd)'
+        description: 'Video Link (mp4, m3u8, mkv)'
         required: false
+        default: ''
       audio_link:
-        description: 'Audio Link (Optional)'
+        description: 'Audio Link (Optional - replaces video audio)'
         required: false
+        default: ''
       stream_key:
         description: 'YouTube Stream Key'
         required: true
+      patti_text:
+        description: 'Patti par kya likhna hai?'
+        default: 'MiTV Network - Powered by Muaaz Iqbal'
       patti_color:
-        description: 'Patti Color (red, blue, black, green)'
+        description: 'Patti Color (red, blue, green, black)'
         default: 'blue'
-      show_patti:
-        description: 'Show Bottom Patti? (yes/no)'
-        default: 'yes'
-  schedule:
-    - cron: '0 */6 * * *' # Auto-restart logic for 24/7
 
 jobs:
-  stream-job:
+  broadcaster:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Setup Python 3.11
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11' # Updated version to fix Google Auth warnings
-
-      - name: Install System Dependencies
+      - name: Install FFmpeg & Fonts
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg fonts-dejavu
 
-      - name: Install Python Libraries
+      - name: Start 24/7 Live Stream
         run: |
-          pip install firebase-admin pytz requests
+          # 1. Inputs Check & Logic
+          VIDEO="${{ github.event.inputs.video_link }}"
+          AUDIO="${{ github.event.inputs.audio_link }}"
+          KEY="${{ github.event.inputs.stream_key }}"
+          TEXT="${{ github.event.inputs.patti_text }}"
+          COLOR="${{ github.event.inputs.patti_color }}"
+          LOGO="logon.png"
 
-      - name: Run MiTV Stream Engine
-        env:
-          FIREBASE_CONFIG: ${{ secrets.FIREBASE_CONFIG }}
-        run: |
-          python stream_engine.py \
-          --video "${{ github.event.inputs.video_link }}" \
-          --audio "${{ github.event.inputs.audio_link }}" \
-          --key "${{ github.event.inputs.stream_key }}" \
-          --color "${{ github.event.inputs.patti_color }}" \
-          --patti "${{ github.event.inputs.show_patti }}"
+          # 2. Infinite Loop Logic
+          while true; do
+            echo "--- MiTV Station Starting ---"
+
+            # 3. Dynamic Input Mapping
+            if [ -z "$VIDEO" ] && [ ! -z "$AUDIO" ]; then
+              # Scenario: Only Audio (Logo as Background)
+              INPUTS="-loop 1 -i $LOGO -re -i $AUDIO"
+              VMAP="[0:v]"
+              AMAP="1:a"
+            elif [ ! -z "$VIDEO" ] && [ ! -z "$AUDIO" ]; then
+              # Scenario: Video + External Audio
+              INPUTS="-re -stream_loop -1 -i $VIDEO -i $AUDIO"
+              VMAP="[0:v]"
+              AMAP="1:a"
+            else
+              # Scenario: Video Only (Default)
+              INPUTS="-re -stream_loop -1 -i $VIDEO"
+              VMAP="[0:v]"
+              AMAP="0:a"
+            fi
+
+            # 4. Complex Filter Construction (Date + Logo + Scrolling Patti)
+            FILTER="${VMAP}scale=1280:720[bg]; \
+            movie=$LOGO,scale=130:-1[logo_img];[bg][logo_img]overlay=20:20[v_logo]; \
+            [v_logo]drawbox=y=130:x=20:w=240:h=50:color=black@0.6:t=fill[box]; \
+            [box]drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='%{localtime\\:%d-%b-%Y}':x=40:y=145:fontsize=22:fontcolor=yellow[v_meta]; \
+            [v_meta]drawbox=y=ih-55:x=0:w=iw:h=55:color=${COLOR}@0.8:t=fill[p_bg]; \
+            [p_bg]drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='${TEXT}':x=w-mod(t*110\,w+tw):y=ih-40:fontsize=28:fontcolor=white[final_v]"
+
+            # 5. Execution Command
+            ffmpeg -y $INPUTS \
+            -filter_complex "$FILTER" \
+            -map "[final_v]" -map $AMAP \
+            -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k \
+            -pix_fmt yuv420p -g 60 -c:a aac -b:a 128k -ar 44100 \
+            -f flv "rtmp://a.rtmp.youtube.com/live2/$KEY"
+
+            echo "--- Stream Interrupted. Reconnecting in 5 seconds... ---"
+            sleep 5
+          done
