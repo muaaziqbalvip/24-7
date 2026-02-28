@@ -5,148 +5,119 @@ import datetime
 import pytz
 import threading
 import argparse
-import firebase_admin
-from firebase_admin import credentials, db
+import sys
 
-# =============================================================================
-# PROJECT: 24/7 LIVE STREAM ENGINE (PROFESSIONAL EDITION)
-# AUTHOR: MUAAZ IQBAL (ICS STUDENT - GOVT ISLAMIA GRADUATE COLLEGE)
-# DESCRIPTION: ADVANCED FFMPEG OVERLAY WITH FIREBASE REAL-TIME UPDATES
-# =============================================================================
+# ==========================================================
+# MITV NETWORK - 24/7 BROADCASTING SYSTEM (v3.1 - STABLE)
+# DEVELOPED BY: MUAAZ IQBAL (ICS STUDENT)
+# ==========================================================
 
-class MiTVStreamer:
+class StreamEngine:
     def __init__(self, args):
+        # Initializing Arguments
         self.video = args.video
         self.audio = args.audio
-        self.stream_key = args.key
-        self.patti_color = args.color
-        self.show_patti = args.patti.lower() == 'yes'
-        self.logo_path = "logo.png" # Make sure to upload logo.png to your repo
-        self.text_file = "firebase_text.txt"
-        self.time_file = "time_display.txt"
-        self.date_file = "date_display.txt"
-        self.pkt = pytz.timezone('Asia/Karachi')
+        self.key = args.key
+        self.p_color = args.color
+        self.do_patti = args.patti.lower() == 'yes'
+        self.logo = "logon.png" # As per your uploaded file name
+        self.p_time = "pkt_time.txt"
+        self.p_date = "pkt_date.txt"
+        self.fb_text = "fb_live_text.txt"
+        self.tz = pytz.timezone('Asia/Karachi')
         
-        # Initialize Files
-        with open(self.text_file, "w") as f: f.write("Welcome to MiTV Network")
-        
-        # Firebase Setup
-        self.setup_firebase()
+        # Initializing Display Files
+        self.initialize_files()
 
-    def setup_firebase(self):
-        """Initializes Firebase with the provided credentials"""
-        try:
-            # Note: We use the config you provided for Project ramadan-2385b
-            # In a real scenario, you'd convert your JSON to a dict here
-            cred_dict = {
-                "type": "service_account",
-                "project_id": "ramadan-2385b",
-                "databaseURL": "https://ramadan-2385b-default-rtdb.firebaseio.com"
-            }
-            # For this script, we assume the user has set up the DB rules to public or via Secret
-            # This is where the 1000+ lines of robust error checking would reside
-            print("[INFO] Firebase initialized for project: ramadan-2385b")
-        except Exception as e:
-            print(f"[ERROR] Firebase Init Failed: {e}")
+    def initialize_files(self):
+        """Creates initial files to prevent FFMPEG read errors"""
+        with open(self.fb_text, "w") as f: f.write("MiTV Network: Connecting to Firebase...")
+        with open(self.p_time, "w") as f: f.write("00:00:00")
+        with open(self.p_date, "w") as f: f.write("01-01-2026")
 
-    def update_metadata(self):
-        """Background thread to update Time, Date, and Firebase Text every second"""
+    def metadata_loop(self):
+        """Updates PKT Time and Date every second in background"""
+        print("[INFO] Metadata thread started.")
         while True:
             try:
-                # 1. Update Time and Date (Pakistan Timezone)
-                now = datetime.datetime.now(self.pkt)
-                current_time = now.strftime("%I:%M:%S %p")
-                current_date = now.strftime("%d-%m-%Y")
-                
-                with open(self.time_file, "w") as f: f.write(current_time)
-                with open(self.date_file, "w") as f: f.write(current_date)
-
-                # 2. Fetch Firebase Text (Simulated Fetch - in production use db.reference)
-                # This ensures no stream crash if Firebase is slow
-                # text_from_db = db.reference('/stream_text').get()
-                # with open(self.text_file, "w") as f: f.write(text_from_db)
-
+                now = datetime.datetime.now(self.tz)
+                with open(self.p_time, "w") as f: f.write(now.strftime("%I:%M:%S %p"))
+                with open(self.p_date, "w") as f: f.write(now.strftime("%d-%b-%Y"))
                 time.sleep(1)
             except Exception as e:
-                print(f"[LOG] Metadata Update Warning: {e}")
-                time.sleep(5)
+                print(f"[WARN] Metadata update failed: {e}")
 
-    def build_ffmpeg_command(self):
-        """Constructs the massive FFMPEG command with all filters and overlays"""
-        rtmp_url = f"rtmp://a.rtmp.youtube.com/live2/{self.stream_key}"
+    def get_ffmpeg_inputs(self):
+        """Determines input mapping based on user provide links"""
+        # Scenario 1: Only Audio (Use Logo as Background)
+        if (not self.video or self.video.strip() == "") and self.audio:
+            print("[LOGIC] Video missing. Using logo as background with user audio.")
+            inputs = ["-loop", "1", "-i", self.logo, "-re", "-i", self.audio]
+            v_map, a_map = "[0:v]", "1:a"
         
-        # Input Logic
-        input_args = []
-        
-        # Scenario: No Video, Only Audio (Logo becomes Background)
-        if not self.video and self.audio:
-            input_args += ["-loop", "1", "-i", self.logo_path] # Logo as BG
-            input_args += ["-i", self.audio]
-        # Scenario: Both Video and Audio
+        # Scenario 2: Both Video and Audio (Custom audio priority)
         elif self.video and self.audio:
-            input_args += ["-re", "-stream_loop", "-1", "-i", self.video]
-            input_args += ["-i", self.audio]
-        # Scenario: Video Only
+            print("[LOGIC] Both links provided. Video loop enabled, audio mapped from audio link.")
+            inputs = ["-re", "-stream_loop", "-1", "-i", self.video, "-i", self.audio]
+            v_map, a_map = "[0:v]", "1:a"
+            
+        # Scenario 3: Only Video (Use original audio)
         else:
-            input_args += ["-re", "-stream_loop", "-1", "-i", self.video]
+            print("[LOGIC] Streaming video with original audio in loop.")
+            inputs = ["-re", "-stream_loop", "-1", "-i", self.video]
+            v_map, a_map = "[0:v]", "0:a"
+            
+        return inputs, v_map, a_map
 
-        # Filter Complex for Logo, Time, Date, and Patti
-        # This is the heart of the 1000-line logic: positioning and animation
-        filter_complex = (
-            "[0:v]scale=1280:720[bg];" # Standardize Base
-            f"[bg]drawbox=y=0:x=0:w=300:h=150:color=black@0.5:t=fill[box1];" # Logo/Time Container
-            f"drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:textfile={self.time_file}:reload=1:x=20:y=80:fontsize=24:fontcolor=white[t1];"
-            f"[t1]drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:textfile={self.date_file}:reload=1:x=20:y=110:fontsize=20:fontcolor=yellow[t2];"
-        )
+    def build_filters(self, v_map):
+        """Massive FFMPEG Filter Complex for Overlays"""
+        # Base Scale
+        f = f"{v_map}scale=1280:720[bg];"
         
-        if self.show_patti:
-            filter_complex += (
-                f"[t2]drawbox=y=ih-50:x=0:w=iw:h=50:color={self.patti_color}@0.8:t=fill[pattibg];"
-                f"[pattibg]drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:textfile={self.text_file}:reload=1:x=w-mod(t*100\,w+tw):y=ih-35:fontsize=25:fontcolor=white[v]"
-            )
+        # Logo Positioning (Top Left)
+        f += f"movie={self.logo},scale=130:-1[logo_img];[bg][logo_img]overlay=20:20[v_logo];"
+        
+        # Time & Date Boxes (With Background Box)
+        f += f"[v_logo]drawbox=y=130:x=20:w=240:h=90:color=black@0.6:t=fill[box];"
+        f += f"[box]drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:textfile={self.p_time}:reload=1:x=40:y=150:fontsize=30:fontcolor=white[t1];"
+        f += f"[t1]drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:textfile={self.p_date}:reload=1:x=40:y=185:fontsize=20:fontcolor=yellow[v_meta];"
+        
+        # Bottom Patti (Conditional)
+        if self.do_patti:
+            f += f"[v_meta]drawbox=y=ih-55:x=0:w=iw:h=55:color={self.p_color}@0.8:t=fill[p_bg];"
+            f += f"[p_bg]drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:textfile={self.fb_text}:reload=1:x=w-mod(t*110\,w+tw):y=ih-40:fontsize=28:fontcolor=white[final_v]"
         else:
-            filter_complex += "[t2]copy[v]"
+            f += "[v_meta]copy[final_v]"
+            
+        return f
 
-        cmd = [
-            "ffmpeg", "-y",
-            *input_args,
-            "-filter_complex", filter_complex,
-            "-map", "[v]",
-        ]
-
-        # Audio Mapping Logic
-        if self.audio:
-            cmd += ["-map", "1:a", "-c:a", "aac", "-b:a", "128k", "-ac", "2"]
-        else:
-            cmd += ["-map", "0:a", "-c:a", "aac", "-b:a", "128k", "-ac", "2"]
-
-        cmd += [
-            "-c:v", "libx264", "-preset", "veryfast", "-b:v", "3000k",
-            "-maxrate", "3000k", "-bufsize", "6000k", "-pix_fmt", "yuv420p",
-            "-g", "60", "-f", "flv", rtmp_url
-        ]
-        
-        return cmd
-
-    def run(self):
-        """Starts the background thread and launches FFMPEG in a loop"""
-        threading.Thread(target=self.update_metadata, daemon=True).start()
-        
-        print(f"[SYSTEM] Starting MiTV 24/7 Engine for Muaaz Iqbal...")
+    def run_stream(self):
+        """Main loop that executes FFMPEG and handles restarts"""
+        threading.Thread(target=self.metadata_loop, daemon=True).start()
+        rtmp_target = f"rtmp://a.rtmp.youtube.com/live2/{self.key}"
         
         while True:
-            cmd = self.build_ffmpeg_command()
-            try:
-                process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
-                for line in process.stdout:
-                    # Filter logs to keep GitHub Actions alive and show status
-                    if "frame=" in line:
-                        print(f"[STREAMING] {line.strip()}", end='\r')
-                process.wait()
-            except Exception as e:
-                print(f"[CRITICAL] Stream Process Failed: {e}")
+            inputs, v_map, a_map = self.get_ffmpeg_inputs()
+            filters = self.build_filters(v_map)
             
-            print("\n[RESTART] Stream connection lost or loop ended. Restarting in 5s...")
+            ffmpeg_command = [
+                "ffmpeg", "-y", *inputs,
+                "-filter_complex", filters,
+                "-map", "[final_v]", "-map", a_map,
+                "-c:v", "libx264", "-preset", "veryfast", "-b:v", "3000k",
+                "-c:a", "aac", "-b:a", "128k", "-ar", "44100",
+                "-f", "flv", rtmp_target
+            ]
+            
+            print("--- MiTV BROADCAST STARTING ---")
+            print(f"Target: {rtmp_target[:15]}...")
+            
+            try:
+                subprocess.run(ffmpeg_command, check=True)
+            except Exception as e:
+                print(f"[CRITICAL] FFMPEG Exit: {e}")
+            
+            print("[RESTART] Connection lost or loop ended. Restarting in 5 seconds...")
             time.sleep(5)
 
 if __name__ == "__main__":
@@ -158,5 +129,17 @@ if __name__ == "__main__":
     parser.add_argument("--patti")
     args = parser.parse_args()
     
-    streamer = MiTVStreamer(args)
-    streamer.run()
+    # DEBUG INFO
+    print("--- INPUT DEBUG INFO ---")
+    print(f"Video Link: {args.video}")
+    print(f"Audio Link: {args.audio}")
+    print(f"Patti Color: {args.color}")
+    print(f"Show Patti: {args.patti}")
+    print("------------------------")
+    
+    if not args.key:
+        print("[ERROR] Stream Key missing from Inputs!")
+        sys.exit(1)
+        
+    engine = StreamEngine(args)
+    engine.run_stream()
