@@ -1,4 +1,4 @@
-name: MiTV Ultimate 24/7 Engine
+name: MiTV Ultimate 24/7 Engine (Full Logic)
 
 on:
   workflow_dispatch:
@@ -6,6 +6,10 @@ on:
       video_link:
         description: 'Main Video URL (Direct Link)'
         required: true
+      audio_link:
+        description: 'Custom Audio URL (Optional - Replaces Video Audio)'
+        required: false
+        default: ''
       logo_link:
         description: 'Logo URL (PNG or MP4)'
         required: true
@@ -13,8 +17,9 @@ on:
       stream_key:
         description: 'YouTube Stream Key'
         required: true
+
   schedule:
-    - cron: '0 */6 * * *' # Har 6 ghante baad auto-restart taake 24/7 chalta rahe
+    - cron: '0 */6 * * *' # Auto-restart logic every 6 hours
 
 jobs:
   broadcast:
@@ -23,42 +28,63 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Install System Tools
+      - name: Install Media Tools
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg curl fonts-dejavu
 
       - name: Prepare Assets
         run: |
-          # Logo ko download karna taake "File Not Found" ka error kabhi na aaye
+          # Logo download logic taake "File Not Found" error na aaye
           curl -L "${{ github.event.inputs.logo_link }}" -o logo_overlay
           echo "Asset Ready: logo_overlay"
 
-      - name: Run 24/7 Stream Engine
+      - name: Run 24/7 Professional Stream
         run: |
+          # Variables definition
           VIDEO="${{ github.event.inputs.video_link }}"
+          AUDIO="${{ github.event.inputs.audio_link }}"
           KEY="${{ github.event.inputs.stream_key }}"
           
-          # Infinite loop taake connection tootne par khud hi dobara join kare
+          # Infinite loop for 24/7 stability
           while true; do
-            echo "--- MiTV Station Online | High Performance Mode ---"
+            echo "--- MiTV Station Starting | Professional Mode ---"
 
-            # 1. Visual Logic: Scaling + Logo Overlay (No Time/Patti to ensure zero parsing errors)
-            # 2. Audio Logic: Copyright Shield (Pitch 1.05x, Tempo 0.95x)
-            # 3. Quality Logic: 3500k Bitrate, 60 FPS GOP for YouTube Stability
+            # ---------------------------------------------------------
+            # FULL LOGIC FOR AUDIO & VIDEO INPUTS
+            # ---------------------------------------------------------
+            if [ -n "$AUDIO" ]; then
+                echo "Custom Audio Detected. Combining Video + Custom Audio."
+                # Scenario: Custom Audio provided (No pitch change needed for custom audio)
+                INPUTS="-re -stream_loop -1 -i $VIDEO -re -i $AUDIO"
+                A_FILTER="copy"
+                AMAP="1:a"
+            else
+                echo "No Custom Audio. Using Original Audio with Copyright Protection."
+                # Scenario: Original Audio (Apply Pitch 1.05x & Tempo 0.95x for Copyright Shield)
+                INPUTS="-re -stream_loop -1 -i $VIDEO"
+                A_FILTER="asetrate=44100*1.05,atempo=0.95"
+                AMAP="0:a"
+            fi
 
-            ffmpeg -y -re -stream_loop -1 -i "$VIDEO" \
+            # ---------------------------------------------------------
+            # FFMPEG EXECUTION WITH DYNAMIC MAPPING
+            # ---------------------------------------------------------
+            # Logo Resizing & Overlay
+            # High Quality Settings: 3500k Bitrate, 60 GOP
+            
+            ffmpeg -y $INPUTS \
             -stream_loop -1 -i logo_overlay \
             -filter_complex \
             "[0:v]scale=1280:720[bg]; \
-             [1:v]scale=130:-1[logo_resized]; \
+             [2:v]scale=130:-1[logo_resized]; \
              [bg][logo_resized]overlay=20:20[final_v]" \
-            -filter:a "asetrate=44100*1.05,atempo=0.95" \
-            -map "[final_v]" -map 0:a \
+            -filter:a "$A_FILTER" \
+            -map "[final_v]" -map $AMAP \
             -c:v libx264 -preset veryfast -b:v 3500k -maxrate 3500k -bufsize 7000k \
-            -pix_fmt yuv420p -g 60 -keyint_min 60 -c:a aac -b:a 128k -ar 44100 \
+            -pix_fmt yuv420p -g 60 -c:a aac -b:a 128k -ar 44100 \
             -f flv "rtmp://a.rtmp.youtube.com/live2/$KEY"
 
-            echo "Reconnecting in 5 seconds..."
+            echo "Stream re-connecting in 5 seconds..."
             sleep 5
           done
