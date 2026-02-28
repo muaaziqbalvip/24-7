@@ -1,0 +1,55 @@
+name: MiTV Network 24/7 Professional Stream
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_link:
+        description: 'Enter Video Link (mp4, m3u8, mkv, mpd)'
+        required: false
+        default: ''
+      audio_link:
+        description: 'Enter Audio Link (Optional)'
+        required: false
+        default: ''
+      stream_key:
+        description: 'YouTube Stream Key'
+        required: true
+      patti_color:
+        description: 'Bottom Patti Color (e.g., red, blue, black)'
+        required: false
+        default: 'blue'
+      show_patti:
+        description: 'Show Bottom Patti? (yes/no)'
+        required: true
+        default: 'yes'
+  schedule:
+    - cron: '0 */6 * * *' # Har 6 ghante baad auto-restart backup
+
+jobs:
+  stream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu
+          pip install firebase-admin pytz requests
+
+      - name: Run 24/7 Stream Engine
+        env:
+          FIREBASE_CONFIG: ${{ secrets.FIREBASE_CONFIG }}
+        run: |
+          python stream_engine.py \
+          --video "${{ github.event.inputs.video_link }}" \
+          --audio "${{ github.event.inputs.audio_link }}" \
+          --key "${{ github.event.inputs.stream_key }}" \
+          --color "${{ github.event.inputs.patti_color }}" \
+          --patti "${{ github.event.inputs.show_patti }}"
