@@ -1,4 +1,4 @@
-name: 24/7 MiTV Network (My Video to Live)
+name: 24/7 MiTV Network (Smooth Stream Logic)
 
 on:
   schedule:
@@ -6,46 +6,54 @@ on:
   workflow_dispatch:
     inputs:
       youtube_url:
-        description: 'Apni YouTube Video ka Link yahan dalein'
+        description: 'Apni YouTube Video ka Link'
         required: true
-        default: 'https://youtu.be/B0Rp1BmC-gQ' # Aapki Surah Rahman wali video
+        default: 'https://youtu.be/B0Rp1BmC-gQ'
+      stream_key:
+        description: 'YouTube Stream Key Yahan Dalein'
+        required: true
 
 jobs:
-  stream_my_video:
+  mitv_live_smooth:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. Checkout
+      - name: 1. Checkout Repository
         uses: actions/checkout@v3
 
-      - name: 2. Install Tools (FFMPEG & YT-DLP)
+      - name: 2. Install High-Speed Tools
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
           sudo chmod a+rx /usr/local/bin/yt-dlp
 
-      - name: 3. Execute Live Stream
+      - name: 3. Execute Smooth Stream
         env:
-          MY_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
+          # Input se key aur url le raha hai
+          MY_KEY: ${{ github.event.inputs.stream_key }}
+          YT_URL: ${{ github.event.inputs.youtube_url }}
         run: |
-          echo "Fetching Video Link and Starting Stream..."
+          echo "MiTV Network: Optimizing Bits for Smooth Streaming..."
           
-          # yt-dlp direct link nikal kar FFMPEG ko dega
-          # -stream_loop -1 isliye lagaya hai taake video khatam ho kar phir se shuru ho jaye
+          # -re: Real-time stream ke liye
+          # -stream_loop -1: 24/7 chalanay ke liye
+          # -b:v 2500k: Constant bitrate taake YouTube connection 'Excellent' rahe
+          # -bufsize 5000k: 2x Buffer taake internet fluctuation handle ho sake
           
-          ffmpeg -re -stream_loop -1 -i $(yt-dlp -f "best[ext=mp4]" -g "${{ github.event.inputs.youtube_url }}") \
+          ffmpeg -re -stream_loop -1 -i $(yt-dlp -f "best[ext=mp4]" -g "$YT_URL") \
           -c:v libx264 -preset ultrafast -tune zerolatency \
-          -b:v 2500k -maxrate 3000k -bufsize 6000k \
-          -threads 0 -pix_fmt yuv420p -g 60 -r 30 \
+          -b:v 2500k -maxrate 2800k -bufsize 5600k \
+          -pix_fmt yuv420p -g 60 -r 30 \
           -c:a aac -b:a 128k -ar 44100 \
           -f flv "rtmp://a.rtmp.youtube.com/live2/$MY_KEY"
 
-      - name: 4. Auto-Restart Logic
+      - name: 4. Auto-Restart Trigger
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Ye agle run mein bhi wahi settings pass karega
           curl -X POST -H "Authorization: token $GH_TOKEN" \
           -H "Accept: application/vnd.github.v3+json" \
           https://api.github.com/repos/${{ github.repository }}/actions/workflows/main.yml/dispatches \
-          -d '{"ref":"main", "inputs": {"youtube_url":"${{ github.event.inputs.youtube_url }}"}}'
+          -d '{"ref":"main", "inputs": {"youtube_url":"${{ github.event.inputs.youtube_url }}", "stream_key":"${{ github.event.inputs.stream_key }}"}}'
