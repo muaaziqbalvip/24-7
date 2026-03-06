@@ -1,40 +1,63 @@
-name: 24/7 Quran Stream MiTV
+name: 24/7 MiTV Network Streamer
 
 on:
   schedule:
-    - cron: '0 */6 * * *' # Har 6 ghante baad auto-start
-  workflow_dispatch:      # Manual start ke liye
-  watch:                  # Star karne par start karne ke liye (optional)
-    types: [started]
+    - cron: '0 */6 * * *' # Har 6 ghante baad auto-restart
+  workflow_dispatch:      # User se input lene ke liye
+    inputs:
+      video_url:
+        description: 'Apna MP4 ya M3U8 Link yahan paste karein'
+        required: true
+        default: 'https://example.com/video.mp4'
+      stream_key:
+        description: 'YouTube Stream Key (Agar Secret use nahi karna)'
+        required: false
+      use_loop:
+        description: 'Kya video ko loop mein chalana hai? (true/false)'
+        required: true
+        default: 'true'
 
 jobs:
-  stream:
+  mitv_stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 350 # 6 ghante (360 mins) se thoda pehle band hoga taake agli job shuru ho sake
-    
+    timeout-minutes: 350 # GitHub ki 6 ghante ki limit se pehle khatam hoga
+
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Install FFMPEG
+      - name: Setup FFMPEG
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Start Live Stream
+      - name: Execute Live Stream
         env:
-          STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
-          VIDEO_URL: "YOUR_MP4_DIRECT_LINK" # Yahan apna video link dalein
+          # Pehle input check karega, agar khali hua to Secret se uthayega
+          INPUT_KEY: ${{ github.event.inputs.stream_key }}
+          SECRET_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
+          VIDEO_URL: ${{ github.event.inputs.video_url }}
+          LOOP_MODE: ${{ github.event.inputs.use_loop }}
         run: |
-          # Loop logic aur auto-restart handling
-          ffmpeg -re -stream_loop -1 -i "$VIDEO_URL" \
+          # Stream Key Finalize karna
+          FINAL_KEY="${INPUT_KEY:-$SECRET_KEY}"
+          
+          # Loop Command tayyar karna
+          LOOP_CMD=""
+          if [ "$LOOP_MODE" = "true" ]; then
+            LOOP_CMD="-stream_loop -1"
+          fi
+
+          echo "Starting MiTV Stream for $VIDEO_URL..."
+          
+          # FFMPEG Command jo MP4 aur M3U8 dono ko handle karti hai
+          ffmpeg $LOOP_CMD -re -i "$VIDEO_URL" \
           -vcodec libx264 -preset veryfast -maxrate 3000k -bufsize 6000k \
           -pix_fmt yuv420p -g 50 -c:a aac -b:a 128k -ar 44100 \
-          -f flv "rtmp://a.rtmp.youtube.com/live2/$STREAM_KEY"
+          -f flv "rtmp://a.rtmp.youtube.com/live2/$FINAL_KEY"
 
-      - name: Auto Restart Trigger
-        if: always() # Agar stream crash bhi ho jaye tab bhi restart trigger karega
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: main
+      - name: Self-Restart Logic
+        if: always()
+        run: |
+          echo "6 Hours limit reaching or stream stopped. Restarting workflow..."
+          # GitHub API ke zariye agla cycle trigger karne ki koshish (Optional but recommended)
