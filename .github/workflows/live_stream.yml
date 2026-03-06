@@ -1,4 +1,4 @@
-name: 24/7 MiTV Network Streamer Ultra-Pro
+name: 24/7 MiTV Network Streamer Anti-Freeze
 
 on:
   schedule:
@@ -38,21 +38,22 @@ jobs:
         run: |
           FINAL_KEY="${INPUT_KEY:-$SECRET_KEY}"
           
-          echo "Starting MiTV Network High-Stability Stream..."
+          echo "MiTV Network: Starting Anti-Freeze Logic..."
 
-          # Nayi Optimized Settings:
-          # 1. -reconnect commands: Agar link slow ho to foran dobara connect kare
-          # 2. -preset veryfast: Quality ko 'ultrafast' se behtar karne ke liye
-          # 3. -crf 18: Video ki asli quality barqarar rakhne ke liye
+          # Nayi Settings jo 'Rukne' ko rokeingi:
+          # -rw_timeout: Agar 10 second tak data na aye to retry kare
+          # -fflags +genpts: Video ke timing points ko khud theek kare
           
-          ffmpeg -re \
-          -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 \
+          ffmpeg -re -v info \
+          -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 2 \
+          -rw_timeout 10000000 \
           -stream_loop -1 -i "$VIDEO_URL" \
           -vf "scale=1280:720,format=yuv420p" \
-          -vcodec libx264 -preset veryfast -tune zerolatency \
-          -b:v 3500k -maxrate 4000k -bufsize 8000k -crf 18 \
+          -vcodec libx264 -preset ultrafast -tune zerolatency \
+          -b:v 2500k -maxrate 3000k -bufsize 6000k \
           -threads 0 -g 60 -r 30 \
           -c:a aac -b:a 128k -ar 44100 \
+          -fflags +genpts \
           -f flv "rtmp://a.rtmp.youtube.com/live2/$FINAL_KEY"
 
       - name: Auto-Restart Trigger
