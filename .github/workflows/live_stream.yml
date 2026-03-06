@@ -1,59 +1,57 @@
-name: 24/7 MiTV Network (Smooth Stream Logic)
+name: 24/7 MiTV Network (Fixed Protocol & Bits)
 
 on:
   schedule:
-    - cron: '0 */6 * * *' # Har 6 ghante baad auto-restart
+    - cron: '0 */6 * * *'
   workflow_dispatch:
     inputs:
       youtube_url:
-        description: 'Apni YouTube Video ka Link'
+        description: 'Apni Video ka Link'
         required: true
         default: 'https://youtu.be/B0Rp1BmC-gQ'
       stream_key:
-        description: 'YouTube Stream Key Yahan Dalein'
+        description: 'YouTube Stream Key'
         required: true
 
 jobs:
-  mitv_live_smooth:
+  mitv_smooth_stream:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. Checkout Repository
+      - name: 1. Setup Environment
         uses: actions/checkout@v3
 
-      - name: 2. Install High-Speed Tools
+      - name: 2. Install Professional Tools
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
           sudo chmod a+rx /usr/local/bin/yt-dlp
 
-      - name: 3. Execute Smooth Stream
+      - name: 3. Streaming Logic (Bitrate & Protocol Fix)
         env:
-          # Input se key aur url le raha hai
           MY_KEY: ${{ github.event.inputs.stream_key }}
           YT_URL: ${{ github.event.inputs.youtube_url }}
         run: |
-          echo "MiTV Network: Optimizing Bits for Smooth Streaming..."
+          echo "Starting MiTV Network Stream..."
           
-          # -re: Real-time stream ke liye
-          # -stream_loop -1: 24/7 chalanay ke liye
-          # -b:v 2500k: Constant bitrate taake YouTube connection 'Excellent' rahe
-          # -bufsize 5000k: 2x Buffer taake internet fluctuation handle ho sake
+          # 'Protocol Not Found' fix karne ke liye humne variable handling behtar ki hai
+          # Bitrate ko force kiya hai taake YouTube ki 2500k wali warning khatam ho jaye
           
-          ffmpeg -re -stream_loop -1 -i $(yt-dlp -f "best[ext=mp4]" -g "$YT_URL") \
+          VIDEO_LINK=$(yt-dlp -f "best[ext=mp4]" -g "$YT_URL")
+          
+          ffmpeg -re -stream_loop -1 -i "$VIDEO_LINK" \
           -c:v libx264 -preset ultrafast -tune zerolatency \
-          -b:v 2500k -maxrate 2800k -bufsize 5600k \
+          -b:v 3000k -maxrate 3500k -bufsize 7000k \
           -pix_fmt yuv420p -g 60 -r 30 \
           -c:a aac -b:a 128k -ar 44100 \
           -f flv "rtmp://a.rtmp.youtube.com/live2/$MY_KEY"
 
-      - name: 4. Auto-Restart Trigger
+      - name: 4. Auto-Restart on Failure
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Ye agle run mein bhi wahi settings pass karega
           curl -X POST -H "Authorization: token $GH_TOKEN" \
           -H "Accept: application/vnd.github.v3+json" \
           https://api.github.com/repos/${{ github.repository }}/actions/workflows/main.yml/dispatches \
-          -d '{"ref":"main", "inputs": {"youtube_url":"${{ github.event.inputs.youtube_url }}", "stream_key":"${{ github.event.inputs.stream_key }}"}}'
+          -d "{\"ref\":\"main\", \"inputs\": {\"youtube_url\":\"${{ github.event.inputs.youtube_url }}\", \"stream_key\":\"${{ github.event.inputs.stream_key }}\"}}"
