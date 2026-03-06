@@ -1,71 +1,46 @@
-name: 24/7 MiTV Network Streamer (Key Fix)
+name: 24/7 MiTV Network (My Video to Live)
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 */6 * * *' # Har 6 ghante baad auto-restart
   workflow_dispatch:
     inputs:
-      video_url:
-        description: 'Dropbox Direct Link'
+      youtube_url:
+        description: 'Apni YouTube Video ka Link yahan dalein'
         required: true
-        default: 'https://www.dropbox.com/scl/fi/40bs4vdqe4396dpxd9srq/lv_0_20260306070513.mp4?rlkey=7nu8rzif6ojyvxmqg5zim5vm8&st=msaab5va&raw=1'
+        default: 'https://youtu.be/B0Rp1BmC-gQ' # Aapki Surah Rahman wali video
 
 jobs:
-  mitv_stream:
+  stream_my_video:
     runs-on: ubuntu-latest
-    timeout-minutes: 350
-    permissions:
-      contents: write
-      actions: write
-
     steps:
       - name: 1. Checkout
         uses: actions/checkout@v3
 
-      - name: 2. Install Tools
+      - name: 2. Install Tools (FFMPEG & YT-DLP)
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg wget fonts-liberation
+          sudo apt-get install -y ffmpeg
+          sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+          sudo chmod a+rx /usr/local/bin/yt-dlp
 
-      - name: 3. Download Video
-        id: dl
-        run: |
-          # Fast download logic
-          if wget -q --show-progress -O video.mp4 "${{ github.event.inputs.video_url }}"; then
-             echo "DL_STATUS=OK" >> $GITHUB_ENV
-          else
-             echo "DL_STATUS=FAIL" >> $GITHUB_ENV
-          fi
-
-      - name: 4. Start Streaming
+      - name: 3. Execute Live Stream
         env:
-          # YAHAN CHECK KAREIN: Kya aapne Secret ka naam yahi rakha hai?
           MY_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
         run: |
-          # Agar Key khaali hai to error dega
-          if [ -z "$MY_KEY" ]; then
-            echo "Error: YOUTUBE_STREAM_KEY nahi mili. Secrets check karein!"
-            exit 1
-          fi
+          echo "Fetching Video Link and Starting Stream..."
+          
+          # yt-dlp direct link nikal kar FFMPEG ko dega
+          # -stream_loop -1 isliye lagaya hai taake video khatam ho kar phir se shuru ho jaye
+          
+          ffmpeg -re -stream_loop -1 -i $(yt-dlp -f "best[ext=mp4]" -g "${{ github.event.inputs.youtube_url }}") \
+          -c:v libx264 -preset ultrafast -tune zerolatency \
+          -b:v 2500k -maxrate 3000k -bufsize 6000k \
+          -threads 0 -pix_fmt yuv420p -g 60 -r 30 \
+          -c:a aac -b:a 128k -ar 44100 \
+          -f flv "rtmp://a.rtmp.youtube.com/live2/$MY_KEY"
 
-          if [ "$DL_STATUS" = "OK" ]; then
-            echo "MiTV Network: Streaming from downloaded file..."
-            ffmpeg -re -stream_loop -1 -i video.mp4 \
-              -vcodec libx264 -preset ultrafast -tune zerolatency \
-              -b:v 2500k -maxrate 3000k -bufsize 6000k \
-              -threads 0 -pix_fmt yuv420p -g 60 -r 30 \
-              -c:a aac -b:a 128k -ar 44100 \
-              -f flv "rtmp://a.rtmp.youtube.com/live2/$MY_KEY"
-          else
-            echo "MiTV Network: Download failed. Showing Error Message..."
-            ffmpeg -f lavfi -i color=c=black:s=1280x720:r=30 -f lavfi -i anullsrc=r=44100:cl=stereo \
-              -vf "drawtext=fontfile=/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf: \
-              text='MiTV NETWORK\: CONNECTION PROBLEM': fontcolor=white: fontsize=50: x=(w-text_w)/2: y=(h-text_h)/2" \
-              -vcodec libx264 -preset ultrafast -tune zerolatency -b:v 1500k \
-              -pix_fmt yuv420p -t 300 -f flv "rtmp://a.rtmp.youtube.com/live2/$MY_KEY"
-          fi
-
-      - name: 5. Auto Restart
+      - name: 4. Auto-Restart Logic
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -73,4 +48,4 @@ jobs:
           curl -X POST -H "Authorization: token $GH_TOKEN" \
           -H "Accept: application/vnd.github.v3+json" \
           https://api.github.com/repos/${{ github.repository }}/actions/workflows/main.yml/dispatches \
-          -d '{"ref":"main", "inputs": {"video_url":"${{ github.event.inputs.video_url }}"}}'
+          -d '{"ref":"main", "inputs": {"youtube_url":"${{ github.event.inputs.youtube_url }}"}}'
