@@ -2,21 +2,21 @@ name: 24/7 MiTV Network Streamer Ultra-Pro
 
 on:
   schedule:
-    - cron: '0 */6 * * *' # Har 6 ghante baad auto-restart
-  workflow_dispatch:      # Manual start aur input ke liye
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
     inputs:
       video_url:
-        description: 'Dropbox Direct Link ya MP4 URL'
+        description: 'Dropbox Direct Link'
         required: true
         default: 'https://www.dropbox.com/scl/fi/40bs4vdqe4396dpxd9srq/lv_0_20260306070513.mp4?rlkey=7nu8rzif6ojyvxmqg5zim5vm8&st=msaab5va&raw=1'
       stream_key:
-        description: 'YouTube Stream Key (Agar secret set nahi kiya)'
+        description: 'YouTube Stream Key'
         required: false
 
 jobs:
   mitv_stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 350 # 6 ghante se 10 min pehle band hoga taake restart ho sake
+    timeout-minutes: 350
     permissions:
       contents: write
       actions: write
@@ -36,19 +36,22 @@ jobs:
           SECRET_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
           VIDEO_URL: ${{ github.event.inputs.video_url }}
         run: |
-          # Stream Key Finalize karna
           FINAL_KEY="${INPUT_KEY:-$SECRET_KEY}"
           
-          echo "Starting MiTV Network Optimized Stream..."
-          echo "Targeting 2500k Bitrate for YouTube Excellent Connection"
+          echo "Starting MiTV Network High-Stability Stream..."
 
-          # FFMPEG Settings optimized for GitHub Actions Speed
-          # -vf scale=1280:720 (Video ko auto 720p kar dega taake internet par load kam ho)
-          ffmpeg -re -stream_loop -1 -i "$VIDEO_URL" \
-          -vf "scale=1280:720" \
-          -vcodec libx264 -preset ultrafast -tune zerolatency \
-          -b:v 2500k -maxrate 2500k -bufsize 5000k \
-          -threads 0 -pix_fmt yuv420p -g 60 -r 30 \
+          # Nayi Optimized Settings:
+          # 1. -reconnect commands: Agar link slow ho to foran dobara connect kare
+          # 2. -preset veryfast: Quality ko 'ultrafast' se behtar karne ke liye
+          # 3. -crf 18: Video ki asli quality barqarar rakhne ke liye
+          
+          ffmpeg -re \
+          -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 \
+          -stream_loop -1 -i "$VIDEO_URL" \
+          -vf "scale=1280:720,format=yuv420p" \
+          -vcodec libx264 -preset veryfast -tune zerolatency \
+          -b:v 3500k -maxrate 4000k -bufsize 8000k -crf 18 \
+          -threads 0 -g 60 -r 30 \
           -c:a aac -b:a 128k -ar 44100 \
           -f flv "rtmp://a.rtmp.youtube.com/live2/$FINAL_KEY"
 
@@ -57,7 +60,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Triggering Auto-Restart for 24/7 Connectivity..."
           curl -X POST -H "Authorization: token $GH_TOKEN" \
           -H "Accept: application/vnd.github.v3+json" \
           https://api.github.com/repos/${{ github.repository }}/actions/workflows/main.yml/dispatches \
