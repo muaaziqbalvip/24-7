@@ -1,4 +1,4 @@
-name: MiTV Network 24/7 Ultra-Stable
+name: 24/7 MiTV Network Ultra-Smooth
 
 on:
   schedule:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       video_url:
-        description: 'Dropbox Direct MP4 Link (Yahan YouTube link mat dalein)'
+        description: 'Dropbox Direct Link'
         required: true
         default: 'https://www.dropbox.com/scl/fi/40bs4vdqe4396dpxd9srq/lv_0_20260306070513.mp4?rlkey=7nu8rzif6ojyvxmqg5zim5vm8&st=msaab5va&raw=1'
       stream_key:
@@ -14,10 +14,10 @@ on:
         required: true
 
 jobs:
-  mitv_24_7:
+  mitv_stream_logic:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. Setup Environment
+      - name: 1. Checkout
         uses: actions/checkout@v3
 
       - name: 2. Install Tools
@@ -25,50 +25,50 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg wget fonts-liberation
 
-      - name: 3. Dynamic Stream Controller
+      - name: 3. Background Download & Live Status
         env:
           MY_KEY: ${{ github.event.inputs.stream_key }}
-          DL_URL: ${{ github.event.inputs.video_url }}
+          VIDEO_URL: ${{ github.event.inputs.video_url }}
         run: |
-          echo "Starting MiTV Smart Controller..."
-
-          # Phase 1: Animated Loading Screen (Background mein chalti rahegi)
-          # Isme ek dynamic timer/text effect hai jo screen par 'MiTV LOADING' dikhayega
+          # Pehle 30 seconds ke liye Animated Loading Screen chalao
+          echo "MiTV: Starting Animated Loading Screen..."
           ffmpeg -f lavfi -i color=c=black:s=1280x720:r=30 -f lavfi -i anullsrc=r=44100:cl=stereo \
             -vf "drawtext=fontfile=/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf: \
-            text='MiTV NETWORK\: INITIALIZING SYSTEM...': fontcolor=white: fontsize=40: x=(w-text_w)/2: y=(h-text_h)/2-50, \
+            text='MiTV NETWORK\: CONNECTING TO SERVER...': fontcolor=white: fontsize=40: x=(w-text_w)/2: y=(h-text_h)/2-40, \
             drawtext=fontfile=/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf: \
-            text='PLEASE WAIT - LOADING HIGH QUALITY SOURCE': fontcolor=yellow: fontsize=25: x=(w-text_w)/2: y=(h-text_h)/2+20" \
-            -vcodec libx264 -preset ultrafast -tune zerolatency -b:v 1500k \
-            -pix_fmt yuv420p -t 60 -f flv "rtmp://a.rtmp.youtube.com/live2/$MY_KEY" &
+            text='Optimizing Bitrate for Smooth Streaming': fontcolor=yellow: fontsize=20: x=(w-text_w)/2: y=(h-text_h)/2+20" \
+            -vcodec libx264 -preset ultrafast -tune zerolatency -b:v 2500k \
+            -pix_fmt yuv420p -t 45 -f flv "rtmp://a.rtmp.youtube.com/live2/$MY_KEY" &
 
-          # Phase 2: Secure Download
-          echo "Downloading secure video source..."
-          if wget --timeout=30 --tries=5 -O video.mp4 "$DL_URL"; then
-             echo "Source Loaded Successfully."
-          else
-             echo "Source Failed! Showing Error Animation..."
-             ffmpeg -f lavfi -i color=c=blue:s=1280x720:r=30 -f lavfi -i anullsrc=r=44100:cl=stereo \
-               -vf "drawtext=fontfile=/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf: \
-               text='MiTV NETWORK\: CONNECTION RECOVERY MODE': fontcolor=white: fontsize=40: x=(w-text_w)/2: y=(h-text_h)/2" \
-               -vcodec libx264 -t 30 -f flv "rtmp://a.rtmp.youtube.com/live2/$MY_KEY"
-             exit 0 # Workflow fail nahi hoga, bas restart hoga
-          fi
+          # Video download logic with retries
+          echo "MiTV: Downloading source file..."
+          wget -q --show-progress --timeout=30 --tries=10 -O video.mp4 "$VIDEO_URL"
 
-          # Phase 3: Main High-Bitrate Stream (3000k for Excellent Health)
+      - name: 4. Final Smooth Stream (Anti-Bot Settings)
+        env:
+          MY_KEY: ${{ github.event.inputs.stream_key }}
+        run: |
+          # Yahan hum Bits aur Quality ko professional level par set kar rahe hain
+          # -g 60 YouTube ke liye perfect 2-second keyframe hai
+          # -b:v 3000k ensures "Excellent Connection" in YouTube Studio
+          
+          echo "MiTV: Starting Main 24/7 Stream..."
           ffmpeg -re -stream_loop -1 -i video.mp4 \
             -vcodec libx264 -preset veryfast -tune zerolatency \
             -b:v 3000k -maxrate 3500k -bufsize 7000k \
-            -pix_fmt yuv420p -g 60 -r 30 \
+            -threads 0 -pix_fmt yuv420p -g 60 -r 30 \
             -c:a aac -b:a 128k -ar 44100 \
-            -f flv "rtmp://a.rtmp.youtube.com/live2/$MY_KEY" || echo "Stream ended, restarting..."
+            -f flv "rtmp://a.rtmp.youtube.com/live2/$MY_KEY" || \
+          (echo "Error detected! Showing Animated Recovery..." && \
+          ffmpeg -f lavfi -i color=c=blue:s=1280x720:r=30 -f lavfi -i anullsrc=r=44100:cl=stereo \
+            -vf "drawtext=text='MiTV NETWORK\: RECOVERING STREAM...':fontcolor=white:fontsize=45:x=(w-text_w)/2:y=(h-text_h)/2" \
+            -t 30 -f flv "rtmp://a.rtmp.youtube.com/live2/$MY_KEY")
 
-      - name: 4. Infinite Auto-Restart Logic
+      - name: 5. Force Restart (GitHub Safe Mode)
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Ye code ensure karega ke GitHub par error na aaye aur workflow chalta rahe
           curl -X POST -H "Authorization: token $GH_TOKEN" \
           -H "Accept: application/vnd.github.v3+json" \
           https://api.github.com/repos/${{ github.repository }}/actions/workflows/main.yml/dispatches \
