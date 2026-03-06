@@ -1,4 +1,4 @@
-name: 24/7 MiTV Network (Fixed Protocol & Bits)
+name: 24/7 MiTV Network (Bot & Protocol Fix)
 
 on:
   schedule:
@@ -14,39 +14,40 @@ on:
         required: true
 
 jobs:
-  mitv_smooth_stream:
+  mitv_fix_stream:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. Setup Environment
+      - name: 1. Setup Repo
         uses: actions/checkout@v3
 
-      - name: 2. Install Professional Tools
+      - name: 2. Install Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg wget
+          # yt-dlp ko update karna taake bot detection kam ho
           sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
           sudo chmod a+rx /usr/local/bin/yt-dlp
 
-      - name: 3. Streaming Logic (Bitrate & Protocol Fix)
+      - name: 3. Download Video (To Avoid Bot Error)
+        run: |
+          echo "Downloading video to local server..."
+          # Hum yahan user-agent change kar rahe hain taake YouTube block na kare
+          yt-dlp -f "best[ext=mp4]" --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" -o video.mp4 "${{ github.event.inputs.youtube_url }}"
+
+      - name: 4. Start Ultra Smooth Stream
         env:
           MY_KEY: ${{ github.event.inputs.stream_key }}
-          YT_URL: ${{ github.event.inputs.youtube_url }}
         run: |
-          echo "Starting MiTV Network Stream..."
-          
-          # 'Protocol Not Found' fix karne ke liye humne variable handling behtar ki hai
-          # Bitrate ko force kiya hai taake YouTube ki 2500k wali warning khatam ho jaye
-          
-          VIDEO_LINK=$(yt-dlp -f "best[ext=mp4]" -g "$YT_URL")
-          
-          ffmpeg -re -stream_loop -1 -i "$VIDEO_LINK" \
+          echo "MiTV Network: Starting Stream from Local File..."
+          # Bitrate ko fix kiya hai 3000k par taake YouTube Excellent connection dikhaye
+          ffmpeg -re -stream_loop -1 -i video.mp4 \
           -c:v libx264 -preset ultrafast -tune zerolatency \
           -b:v 3000k -maxrate 3500k -bufsize 7000k \
           -pix_fmt yuv420p -g 60 -r 30 \
           -c:a aac -b:a 128k -ar 44100 \
           -f flv "rtmp://a.rtmp.youtube.com/live2/$MY_KEY"
 
-      - name: 4. Auto-Restart on Failure
+      - name: 5. Auto Recovery
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
