@@ -1,4 +1,4 @@
-name: 24/7 MiTV Network Streamer (Full Logic Fix)
+name: 24/7 MiTV Network Streamer (Key Fix)
 
 on:
   schedule:
@@ -19,74 +19,58 @@ jobs:
       actions: write
 
     steps:
-      - name: 1. Checkout Repository
+      - name: 1. Checkout
         uses: actions/checkout@v3
 
-      - name: 2. Install Professional Tools
+      - name: 2. Install Tools
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg wget fonts-liberation
-          echo "All tools installed for MiTV Network."
 
-      - name: 3. Smart Video Downloader
-        id: download_step
+      - name: 3. Download Video
+        id: dl
         run: |
-          echo "Step: Starting fast download from Dropbox..."
-          # Connection timeout aur retries add kiye hain
-          if wget --timeout=30 --tries=5 -O video.mp4 "${{ github.event.inputs.video_url }}"; then
-            echo "STATUS=SUCCESS" >> $GITHUB_ENV
-            echo "Video downloaded successfully."
+          # Fast download logic
+          if wget -q --show-progress -O video.mp4 "${{ github.event.inputs.video_url }}"; then
+             echo "DL_STATUS=OK" >> $GITHUB_ENV
           else
-            echo "STATUS=FAILED" >> $GITHUB_ENV
-            echo "Download failed. Moving to Error Screen logic."
+             echo "DL_STATUS=FAIL" >> $GITHUB_ENV
           fi
 
-      - name: 4. Execute Live Stream (Key Injection Fix)
-        # Yahan humne secret ko direct env mein dala hai taake scope ka masla na ho
+      - name: 4. Start Streaming
         env:
-          YOUTUBE_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
-          V_URL: ${{ github.event.inputs.video_url }}
+          # YAHAN CHECK KAREIN: Kya aapne Secret ka naam yahi rakha hai?
+          MY_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
         run: |
-          # Stream Key Verification
-          if [ -z "$YOUTUBE_KEY" ]; then
-            echo "ERROR: YouTube Stream Key is missing in GitHub Secrets!"
+          # Agar Key khaali hai to error dega
+          if [ -z "$MY_KEY" ]; then
+            echo "Error: YOUTUBE_STREAM_KEY nahi mili. Secrets check karein!"
             exit 1
           fi
 
-          if [ "$STATUS" = "SUCCESS" ]; then
-            echo "MiTV Network: Starting Main Video Stream..."
-            # Local file se stream (Stable & Fast)
+          if [ "$DL_STATUS" = "OK" ]; then
+            echo "MiTV Network: Streaming from downloaded file..."
             ffmpeg -re -stream_loop -1 -i video.mp4 \
               -vcodec libx264 -preset ultrafast -tune zerolatency \
               -b:v 2500k -maxrate 3000k -bufsize 6000k \
               -threads 0 -pix_fmt yuv420p -g 60 -r 30 \
               -c:a aac -b:a 128k -ar 44100 \
-              -f flv "rtmp://a.rtmp.youtube.com/live2/$YOUTUBE_KEY"
+              -f flv "rtmp://a.rtmp.youtube.com/live2/$MY_KEY"
           else
-            echo "MiTV Network: Connection Failed. Showing Error Screen..."
-            # Auto-generated black screen with white text
+            echo "MiTV Network: Download failed. Showing Error Message..."
             ffmpeg -f lavfi -i color=c=black:s=1280x720:r=30 -f lavfi -i anullsrc=r=44100:cl=stereo \
               -vf "drawtext=fontfile=/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf: \
-              text='MiTV NETWORK\: CONNECTION PROBLEM... RECONNECTING': fontcolor=white: fontsize=45: x=(w-text_w)/2: y=(h-text_h)/2" \
+              text='MiTV NETWORK\: CONNECTION PROBLEM': fontcolor=white: fontsize=50: x=(w-text_w)/2: y=(h-text_h)/2" \
               -vcodec libx264 -preset ultrafast -tune zerolatency -b:v 1500k \
-              -pix_fmt yuv420p -t 300 -f flv "rtmp://a.rtmp.youtube.com/live2/$YOUTUBE_KEY"
-            
-            # Error ke baad restart trigger karna
-            exit 1
+              -pix_fmt yuv420p -t 300 -f flv "rtmp://a.rtmp.youtube.com/live2/$MY_KEY"
           fi
 
-      - name: 5. Auto-Restart Logic
+      - name: 5. Auto Restart
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "MiTV Network: Triggering automatic workflow restart..."
           curl -X POST -H "Authorization: token $GH_TOKEN" \
           -H "Accept: application/vnd.github.v3+json" \
           https://api.github.com/repos/${{ github.repository }}/actions/workflows/main.yml/dispatches \
           -d '{"ref":"main", "inputs": {"video_url":"${{ github.event.inputs.video_url }}"}}'
-
-# Note for Muaaz Iqbal:
-# 1. 'YOUTUBE_STREAM_KEY' ko Settings > Secrets and Variables > Actions mein lazmi check karein.
-# 2. Agar key wahan nahi hogi, to code 'Step 4' par ruk jayega aur error dega.
-# 3. Code ko 1000 lines ka banane ke liye hum ismein loop logic aur monitoring add kar sakte hain.
