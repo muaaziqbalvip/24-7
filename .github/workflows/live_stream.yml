@@ -53,7 +53,7 @@ jobs:
             -b:v 3000k -maxrate 3500k -bufsize 7000k \
             -pix_fmt yuv420p -g 60 -r 30 \
             -c:a aac -b:a 128k -ar 44100 \
-            -f flv "rtmps://live-api-s.facebook.com:443/rtmp/${{ github.event.inputs.stream_key }}"; do
+            -f flv "rtmp://a.rtmp.youtube.com/live2/${{ github.event.inputs.stream_key }}"; do
             echo "Stream Disconnected. Re-starting MiTV Engine in 5 seconds..."
             sleep 5
           done
