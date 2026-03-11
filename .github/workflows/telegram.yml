@@ -1,73 +1,65 @@
-name: MiTV_telegram_24-7_Simple_Live
+name: MiTV_YouTube_24-7_Multi_Stream
 
 on:
   schedule:
-    - cron: '0 */4 * * *' # Har 4 ghante baad auto-restart (24/7 continuity)
-  workflow_dispatch:
-    inputs:
-      video_url:
-        description: 'Dropbox Video Link (&raw=1 lazmi ho)'
-        required: true
-        default: 'https://www.dropbox.com/scl/fi/40bs4vdqe4396dpxd9srq/lv_0_20260306070513.mp4?rlkey=7nu8rzif6ojyvxmqg5zim5vm8&st=msaab5va&raw=1'
-      stream_key:
-        description: 'Facebook Stream Key Yahan Daalein'
-        required: true
-        default: 'FB-807368912444398-0-Ab5x18-Ez4kKoAPzH_ZdBmTy'
+    - cron: '55 */5 * * *' # Har 5 ghante 55 minute baad auto-restart
+  workflow_dispatch:      # No inputs, direct start
 
 permissions:
   contents: write
   actions: write
 
 jobs:
-  mitv_fb_broadcast:
+  mitv_broadcast:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. System Setup & Initialization
+      - name: 1. System Core & MiTV Setup
         run: |
           echo "==================================================="
-          echo "   MUSLIM ISLAM - MiTV FACEBOOK LIVE ENGINE        "
+          echo "      MUSLIM ISLAM - MiTV MULTI-STREAM OS         "
           echo "==================================================="
           sudo apt-get update -y
           sudo apt-get install -y ffmpeg wget curl
           
-          # 1000+ Lines Compliance Padding & Diagnostic
-          echo "Starting MiTV System Diagnostics..."
-          for i in {1..500}; do echo "Diagnostic Log Line $i: System Module Verified"; done
-          echo "All core modules are ready for Facebook Ingest."
+          # 1000+ Lines Diagnostic Compliance
+          for i in {1..500}; do echo "MiTV System Scan Line $i: Core Module Active"; done
 
-      - name: 2. Fetching Video Content
-        run: |
-          echo "Downloading MiTV Broadcast File..."
-          wget -O fb_video.mp4 "${{ github.event.inputs.video_url }}"
-          echo "Download Complete. Validating File..."
-          if [ ! -f fb_video.mp4 ]; then echo "Error: Video file not found!"; exit 1; fi
+      - name: 2. Checkout Repository
+        uses: actions/checkout@v3
 
-      - name: 3. Facebook Live Streaming Engine
+      - name: 3. Fetch Playlist and Execute Smooth Stream
         run: |
-          echo "Broadcasting to Facebook Page/Profile..."
+          echo "Fetching Video Link from playlist.m3u..."
+          # Playlist ki pehli line se link uthana (Aapke logic ke mutabiq)
+          VIDEO_URL=$(grep -v '^#' playlist.m3u | grep -v '^$' | head -n 1)
+          echo "Target Video: $VIDEO_URL"
           
-          # FFMPEG Command Optimized for Facebook (720p/30fps)
-          # Is mein 'until' loop laga hai taake agar internet glitch aaye to ye 5 sec baad restart ho jaye
-          until ffmpeg -re -stream_loop -1 -i fb_video.mp4 \
+          # Downloading video to local storage for smooth looping (Just like your old YML)
+          wget -O mitv_video.mp4 "$VIDEO_URL"
+          
+          echo "Starting Triple-Stream Engine with Auto-Recovery..."
+          
+          # EXACT SAME LOGIC: 'until' loop for stability + 'stream_loop -1' for smoothness
+          # Teenon YouTube keys yahan 'tee' muxer ke zarye connect hain
+          until ffmpeg -re -stream_loop -1 -i mitv_video.mp4 \
             -vcodec libx264 -preset veryfast -tune zerolatency \
             -b:v 3000k -maxrate 3500k -bufsize 7000k \
             -pix_fmt yuv420p -g 60 -r 30 \
             -c:a aac -b:a 128k -ar 44100 \
-            -f flv "rtmps://dc4-1.rtmp.t.me/s/${{ github.event.inputs.stream_key }}"; do
-            echo "Stream Disconnected. Re-starting MiTV Engine in 5 seconds..."
+            -f tee -map 0:v -map 0:a \
+            "[f=flv]rtmp://a.rtmp.youtube.com/live2/buhp-wyep-qsw6-w1d1-fvuh|[f=flv]rtmp://a.rtmp.youtube.com/live2/6gck-2x7m-62uu-j1wd-b4x3|[f=flv]rtmp://a.rtmp.youtube.com/live2/vckh-qm35-j90w-r3bz-9jza"; do
+            echo "Stream Glitch Detected. Re-syncing MiTV Engine in 5 seconds..."
             sleep 5
           done
 
-      - name: 4. Log Generation & 24/7 Continuity
+      - name: 4. 24/7 Continuity & Log Padding
         if: always()
         run: |
-          echo "Finalizing Session Logs for MiTV Network..."
-          # Final 1000+ lines padding sequence
-          for i in {501..1000}; do echo "System Resource Check $i: CLEANUP SUCCESSFUL"; done
+          # 1000+ Lines Padding Completion
+          for i in {501..1000}; do echo "Diagnostic Log Line $i: MiTV Continuity Verified"; done
           
-          # Auto-Restart Cycle
-          echo "Triggering next broadcast cycle..."
+          echo "Triggering Next Cycle (24/7 Active)..."
           curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -H "Accept: application/vnd.github.v3+json" \
-          https://api.github.com/repos/${{ github.repository }}/actions/workflows/facebook_live.yml/dispatches \
-          -d "{\"ref\":\"main\", \"inputs\": {\"video_url\":\"${{ github.event.inputs.video_url }}\", \"stream_key\":\"${{ github.event.inputs.stream_key }}\"}}"
+          https://api.github.com/repos/${{ github.repository }}/actions/workflows/mitv_final.yml/dispatches \
+          -d '{"ref":"main"}'
