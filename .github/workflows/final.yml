@@ -49,9 +49,7 @@ jobs:
                 -b:v 3000k -maxrate 3500k -bufsize 6000k \
                 -pix_fmt yuv420p -g 60 -r 30 \
                 -c:a aac -b:a 128k -ar 44100 \
-                -f flv "rtmp://a.rtmp.youtube.com/live2/buhp-wyep-qsw6-w1d1-fvuh" \
-                -f flv "rtmp://a.rtmp.youtube.com/live2/6gck-2x7m-62uu-j1wd-b4x3" \
-                -f flv "rtmp://a.rtmp.youtube.com/live2/vckh-qm35-j90w-r3bz-9jza" || echo "Next video in playlist..."
+                -f flv "rtmp://a.rtmp.youtube.com/live2/6gck-2x7m-62uu-j1wd-b4x3" || echo "Next video in playlist..."
               
               sleep 1
             done < active_list.txt
