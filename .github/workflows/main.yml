@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout Repo
+      - name: 📥 Checkout Code
         uses: actions/checkout@v3
 
       - name: 🐍 Setup Python
@@ -19,12 +19,14 @@ jobs:
 
       - name: 📦 Install Dependencies
         run: |
-          pip install pyTelegramBotAPI requests
+          pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: 🚀 Run MI AI Bot
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: python bot.py
