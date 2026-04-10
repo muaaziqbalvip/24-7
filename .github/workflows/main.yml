@@ -1,26 +1,30 @@
 name: MI AI Bot 24/7
 
 on:
-  schedule:
-    - cron: "0 */6 * * *" # ہر 6 گھنٹے بعد چلے گا
-  workflow_dispatch: # دستی طور پر چلانے کے لیے
+  push:
+  workflow_dispatch:
 
 jobs:
-  build:
+  run-bot:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v2
+      - name: 📥 Checkout Repo
+        uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: "3.10"
 
-      - name: Install Dependencies
-        run: pip install -r requirements.txt
+      - name: 📦 Install Dependencies
+        run: |
+          pip install pyTelegramBotAPI requests
 
-      - name: Run MI AI Bot
-        run: python bot.py
+      - name: 🚀 Run MI AI Bot
         env:
-          PYTHONUNBUFFERED: 1
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python bot.py
