@@ -2,8 +2,8 @@ name: Muslim Islam AI Bot 24/7
 
 on:
   schedule:
-    - cron: "0 */6 * * *" # Har 6 ghante baad auto-restart
-  workflow_dispatch: # Manual start button
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
 
 jobs:
   build:
@@ -16,11 +16,10 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-          cache: 'pip' # Dependencies ko cache karega taake load fast ho
 
       - name: Install Dependencies
         run: |
-          pip install python-telegram-bot==13.15 google-generativeai firebase-admin requests
+          pip install pyTelegramBotAPI google-generativeai firebase-admin requests
 
       - name: Run Muslim Islam AI
         env:
