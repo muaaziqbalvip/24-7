@@ -1,82 +1,92 @@
 import telebot
 import requests
 import json
-import firebase_admin
-from firebase_admin import db
+import time
 from telebot import types
 
 # --- 1. Configurations ---
 BOT_TOKEN = "7942368781:AAGFDlmnBKVKulMR3AHDxLXIgHOgCXjB_Jc"
 GEMINI_API_KEY = "AIzaSyDswodCTMu6EpQLcM6BQhv83La0Zunh94I"
-DB_URL = "https://ramadan-2385b-default-rtdb.firebaseio.com"
-
-# --- 2. Firebase Connection (Safe Mode) ---
-if not firebase_admin._apps:
-    # بغیر کسی سرٹیفکیٹ فائل کے کنیکٹ کرنے کا طریقہ
-    firebase_admin.initialize_app(options={'databaseURL': DB_URL})
+# فائر بیس یو آر ایل کے آخر میں .json لگانا ضروری ہے REST API کے لیے
+DB_BASE_URL = "https://ramadan-2385b-default-rtdb.firebaseio.com/users"
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# --- 3. Smart AI Logic (Direct API - Same as your HTML) ---
+# --- 2. Firebase REST Functions (No Auth Required) ---
+def update_user_data(uid, data):
+    url = f"{DB_BASE_URL}/{uid}.json"
+    try:
+        requests.patch(url, json=data)
+    except: pass
+
+def get_user_data(uid):
+    url = f"{DB_BASE_URL}/{uid}.json"
+    try:
+        response = requests.get(url)
+        return response.json() or {}
+    except: return {}
+
+# --- 3. Gemini AI Logic (Direct API) ---
 def ask_ai_direct(prompt, model_name="gemini-1.5-flash"):
+    # اگر ماڈل کا نام غلط ہو تو اسے درست کریں
+    if "flash" not in model_name and "pro" not in model_name:
+        model_name = "gemini-1.5-flash"
+        
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
     headers = {'Content-Type': 'application/json'}
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}]
-    }
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
     
     try:
-        response = requests.post(url, headers=headers, json=payload)
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
         data = response.json()
-        if response.status_code == 200:
-            return data['candidates'][0]['content']['parts'][0]['text']
-        else:
-            return f"❌ API Error: {data.get('error', {}).get('message', 'Unknown error')}"
+        return data['candidates'][0]['content']['parts'][0]['text']
     except Exception as e:
-        return f"❌ Connection Error: {str(e)}"
+        return f"❌ AI Service Busy. Try again later."
 
-# --- 4. Handlers ---
+# --- 4. Bot Handlers ---
 @bot.message_handler(commands=['start'])
 def start(message):
     uid = str(message.from_user.id)
-    # یوزر ٹریکنگ (Firebase)
-    try:
-        db.reference(f'users/{uid}').update({
-            'name': message.from_user.first_name,
-            'username': message.from_user.username,
-            'last_active': "Now"
-        })
-    except: pass
+    # فائر بیس میں ڈیٹا محفوظ کرنا
+    update_user_data(uid, {
+        "name": message.from_user.first_name,
+        "username": message.from_user.username,
+        "mode": "gemini-1.5-flash"
+    })
 
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    markup.add("🚀 Fast Thinking", "🧠 Pro Thinking", "🔍 AI Search")
-    bot.send_message(message.chat.id, "MI AI ACTIVE! 🚀\nHTML Logic Integrated. Poochiye kya poochna hai?", reply_markup=markup)
+    markup.add("🚀 Fast Mode", "🧠 Pro Thinking", "🔍 AI Search")
+    bot.send_message(message.chat.id, f"Assalam-o-Alaikum {message.from_user.first_name}!\n\n**MI AI** is now Online. No more errors. 🔥\n\nChoose a mode and ask anything!", parse_mode="Markdown", reply_markup=markup)
 
 @bot.message_handler(func=lambda m: True)
 def handle_msg(message):
     uid = str(message.from_user.id)
     text = message.text
     
-    # ماڈل کا انتخاب
-    selected_model = "gemini-1.5-flash" # Default
-    if text == "🧠 Pro Thinking":
-        bot.reply_to(message, "Pro Mode (Long Thinking) Active!")
-        db.reference(f'users/{uid}').update({'mode': 'gemini-1.5-pro'})
+    # موڈ تبدیل کرنے کی لاجک
+    if text == "🚀 Fast Mode":
+        update_user_data(uid, {"mode": "gemini-1.5-flash"})
+        bot.reply_to(message, "⚡ Switched to **Fast Thinking**.")
         return
-    elif text == "🚀 Fast Thinking":
-        bot.reply_to(message, "Fast Mode Active!")
-        db.reference(f'users/{uid}').update({'mode': 'gemini-1.5-flash'})
+    elif text == "🧠 Pro Thinking":
+        update_user_data(uid, {"mode": "gemini-1.5-pro"})
+        bot.reply_to(message, "🧠 Switched to **Pro Thinking (Deep Analysis)**.")
+        return
+    elif text == "🔍 AI Search":
+        update_user_data(uid, {"mode": "gemini-1.5-flash"})
+        bot.reply_to(message, "🔍 Search Mode Active. Send your query.")
         return
 
-    # ڈیٹا بیس سے موجودہ موڈ نکالنا
-    user_mode = db.reference(f'users/{uid}/mode').get() or "gemini-1.5-flash"
+    # موجودہ ڈیٹا حاصل کریں
+    user_data = get_user_data(uid)
+    mode = user_data.get("mode", "gemini-1.5-flash")
     
     bot.send_chat_action(message.chat.id, 'typing')
     
-    # AI سے جواب لینا (Direct HTML-style Logic)
-    result = ask_ai_direct(text, user_mode)
-    bot.reply_to(message, result, parse_mode="Markdown")
+    # AI سے جواب
+    response = ask_ai_direct(text, mode)
+    bot.reply_to(message, response, parse_mode="Markdown")
 
-# --- 5. Start ---
-print("MI AI Running with HTML logic...")
+# --- 5. Start Polling ---
+print("MI AI Running on REST API Mode (No Files Needed)...")
 bot.infinity_polling()
