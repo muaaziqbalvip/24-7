@@ -1,14 +1,14 @@
 import telebot
 import requests
+import os
 from telebot import types
 
 # ================= CONFIG =================
-import os
-
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
 DB_BASE_URL = "https://ramadan-2385b-default-rtdb.firebaseio.com/users"
 
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -40,13 +40,11 @@ def ask_gemini(history):
 
             if res.status_code == 200:
                 data = res.json()
-                text = data['candidates'][0]['content']['parts'][0]['text']
-                return text, f"Gemini ({model})"
+                return data['candidates'][0]['content']['parts'][0]['text'], f"Gemini ({model})"
         except:
             continue
 
     return None, None
-
 
 # ---- GROQ ----
 def ask_groq(history):
@@ -71,14 +69,11 @@ def ask_groq(history):
         res = requests.post(url, json=payload, headers=headers, timeout=15)
 
         if res.status_code == 200:
-            text = res.json()["choices"][0]["message"]["content"]
-            return text, "Groq (LLaMA3)"
-
+            return res.json()["choices"][0]["message"]["content"], "Groq (LLaMA3)"
     except:
         pass
 
     return None, None
-
 
 # ---- OPENROUTER ----
 def ask_openrouter(history):
@@ -103,19 +98,15 @@ def ask_openrouter(history):
         res = requests.post(url, json=payload, headers=headers, timeout=15)
 
         if res.status_code == 200:
-            text = res.json()["choices"][0]["message"]["content"]
-            return text, "OpenRouter (GPT)"
-
+            return res.json()["choices"][0]["message"]["content"], "OpenRouter (GPT)"
     except:
         pass
 
     return None, None
 
-
 # ================= SMART ROUTER =================
 def ask_mi_ai(history, mode="fast"):
 
-    # priority order
     if mode == "pro":
         engines = [ask_gemini, ask_groq, ask_openrouter]
     else:
@@ -127,7 +118,6 @@ def ask_mi_ai(history, mode="fast"):
             return reply, name
 
     return "⚠️ MI AI: Sab AI servers busy hain, dobara try karo.", "None"
-
 
 # ================= BOT =================
 
@@ -150,13 +140,11 @@ def start(message):
         reply_markup=kb
     )
 
-
 @bot.message_handler(func=lambda m: True)
 def handle(message):
     uid = str(message.from_user.id)
     text = message.text
 
-    # ===== MODES =====
     if text == "🚀 Fast Mode":
         update_user_data(uid, {"mode": "fast"})
         bot.reply_to(message, "⚡ Fast Mode ON")
@@ -181,10 +169,8 @@ def handle(message):
     if not isinstance(history, list):
         history = []
 
-    # add user msg
     history.append({"role": "user", "parts": [{"text": text}]})
 
-    # AI RESPONSE
     reply, model = ask_mi_ai(history, mode)
 
     if model != "None":
@@ -194,7 +180,6 @@ def handle(message):
 
     final = f"{reply}\n\n`[{model}]`"
     bot.reply_to(message, final, parse_mode="Markdown")
-
 
 # ================= START =================
 print("🚀 MI AI RUNNING (Multi-AI Routing Enabled)")
