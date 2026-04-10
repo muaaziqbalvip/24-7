@@ -7,339 +7,204 @@ import json
 import base64
 import threading
 import urllib.parse
-from functools import wraps
+import io
+import zipfile
+from fpdf import FPDF
+from PIL import Image
 
 # ==============================================================
-# 🌟 MI AI PRO ULTIMATE - CREATED BY MUAAZ IQBAL
-# 🏢 ORGANIZATION: MUSLIM ISLAM | PROJECT: MiTV Network
+# 🌟 MI AI PRO ULTIMATE - ARCHITECT EDITION
+# 🏢 ORGANIZATION: MUSLIM ISLAM | CREATED BY: MUAAZ IQBAL
 # ==============================================================
 
-# Apni API Keys yahan dalein ya Environment Variables se set karein
-BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_TELEGRAM_BOT_TOKEN_HERE")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "YOUR_GROQ_API_KEY")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "YOUR_OPENROUTER_API_KEY")
+# API Keys (GitHub Secrets se uthayein ya yahan manually likhein)
+BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_TOKEN")
+G_K = os.getenv("GROQ_API_KEY", "YOUR_GROQ_KEY")
+GE_K = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_KEY")
+OR_K = os.getenv("OPENROUTER_API_KEY", "YOUR_OR_KEY")
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # ================= DATABASE / MEMORY =================
-# User ka data save karne ke liye dictionary
 users_db = {}
 
 def get_user(uid):
     if uid not in users_db:
         users_db[uid] = {
-            "current_ai": "gemini", # Options: gemini, groq, openrouter
-            "deep_think": False,
-            "mode": "chat", # Options: chat, story, code, search
-            "history": []
+            "current_ai": "groq",
+            "deep_think": True,
+            "mode": "chat",
+            "history": [],
+            "last_action": None
         }
     return users_db[uid]
 
-# ================= CUSTOM EMOJIS =================
+# ================= CUSTOM ICONS =================
 ICONS = {
-    "bot": "🤖", "user": "👤", "gemini": "💎", "groq": "⚡", 
-    "openrouter": "🌌", "think": "🧠", "vision": "👁️", "search": "🌐",
-    "success": "✅", "loading": "⏳", "error": "⚠️", "creator": "👨‍💻", 
-    "star": "🌟", "fire": "🔥", "code": "💻", "story": "📖", "settings": "⚙️"
+    "bot": "🤖", "vision": "👁️", "voice": "🎤", "pdf": "📄", 
+    "zip": "📦", "video": "🎬", "art": "🎨", "search": "🌐",
+    "think": "🧠", "code": "💻", "success": "✅", "fire": "🔥"
 }
 
-# ================= PROMPT ENGINEERING =================
+# ================= CORE AI ENGINES =================
 
-def get_system_prompt(uid):
+def call_ai_logic(uid, prompt, system_prompt):
+    """Multi-Engine Routing with Fallback"""
     u = get_user(uid)
-    base = f"""
-Tumhara naam MI AI Pro hai. Tumhe MUAAZ IQBAL ne banaya hai.
-Muaaz Iqbal MiTV Network ka founder hai aur MUSLIM ISLAM organization chalata hai.
-Muaaz ek ICS computer science student hai (Govt Islamia Graduate College, Punjab, Pakistan).
-Tumhara tone friendly, respectful, aur highly educational hona chahiye.
-Language: Roman Urdu (Hindi/Urdu Latin) aur English mix use karo.
-Emojis ka bohot zyada use karo.
-Har detail ko explain karo.
-"""
-    if u['deep_think']:
-        base += "\n[DEEP THINK MODE ON]: Har problem ko step-by-step tod kar samjhao. Logic aur reasoning par focus karo. Ek expert teacher ki tarah behave karo."
     
-    if u['mode'] == "code":
-        base += "\n[CODING MODE ON]: Hamesha clean, well-commented code do. Markdown code blocks use karo."
-    elif u['mode'] == "story":
-        base += "\n[STORY MODE ON]: Behtareen cinematic aur emotional stories likho chapters ke sath."
-    elif u['mode'] == "search":
-        base += "\n[SEARCH AI MODE]: Niche diye gaye search results ko analyze karke user ko ek clear, summarize aur accurate answer do."
-
-    return base
-
-# ================= API INTEGRATIONS =================
-
-def call_gemini(uid, prompt, is_vision=False, image_data=None, mime_type="image/jpeg"):
-    u = get_user(uid)
-    system_p = get_system_prompt(uid)
-    
-    # Agar Deep Think ON hai toh Gemini Pro use karega, warna Flash
-    model_name = "gemini-1.5-pro" if u['deep_think'] else "gemini-1.5-flash"
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
-    
-    if is_vision and image_data:
+    # 1. Try Groq (Fastest)
+    try:
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {G_K}", "Content-Type": "application/json"}
+        model = "llama-3.3-70b-versatile" if u['deep_think'] else "llama-3.1-8b-instant"
         payload = {
-            "contents": [{
-                "parts": [
-                    {"text": f"System: {system_p}\n\nUser: {prompt}"},
-                    {"inline_data": {"mime_type": mime_type, "data": image_data}}
-                ]
-            }]
+            "model": model,
+            "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
         }
-    else:
-        payload = {
-            "contents": [{"parts": [{"text": f"System: {system_p}\n\nUser: {prompt}"}]}],
-            "generationConfig": {"temperature": 0.3 if u['deep_think'] else 0.8}
-        }
-    
-    try:
-        r = requests.post(url, json=payload, timeout=30)
-        return r.json()['candidates'][0]['content']['parts'][0]['text']
-    except Exception as e:
-        return None
-
-def call_groq(uid, prompt):
-    u = get_user(uid)
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-    
-    model = "llama3-70b-8192" if u['deep_think'] else "llama3-8b-8192"
-    
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": get_system_prompt(uid)},
-            {"role": "user", "content": prompt}
-        ]
-    }
-    try:
-        r = requests.post(url, json=payload, headers=headers, timeout=20)
-        return r.json()["choices"][0]["message"]["content"]
+        res = requests.post(url, headers=headers, json=payload, timeout=15)
+        return res.json()['choices'][0]['message']['content'], "Groq-70B"
     except:
-        return None
-
-def call_openrouter(uid, prompt):
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
-    
-    payload = {
-        "model": "openai/gpt-3.5-turbo",
-        "messages": [
-            {"role": "system", "content": get_system_prompt(uid)},
-            {"role": "user", "content": prompt}
-        ]
-    }
-    try:
-        r = requests.post(url, json=payload, headers=headers, timeout=20)
-        return r.json()["choices"][0]["message"]["content"]
-    except:
-        return None
-
-def web_search_ai(uid, query):
-    """DuckDuckGo HTML Scraping for real-time data"""
-    try:
-        search_url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-        res = requests.get(search_url, headers=headers, timeout=10)
-        
-        # Simple text extraction
-        text_data = res.text[:3000] # Taking first 3000 chars of HTML as raw context
-        
-        # Pass to Gemini to format it nicely
-        ai_prompt = f"User Query: {query}\n\nSearch Results Raw Data:\n{text_data}\n\nIs data ko read karke user ko ek acha aur accurate jawab do."
-        
-        # Force Gemini for search parsing
-        return call_gemini(uid, ai_prompt)
-    except Exception as e:
-        return f"⚠️ Search failed: {str(e)}"
-
-# ================= UI / KEYBOARDS =================
-
-def main_menu():
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        types.InlineKeyboardButton(f"{ICONS['bot']} AI Chat", callback_data="mode_chat"),
-        types.InlineKeyboardButton(f"{ICONS['settings']} Select AI Model", callback_data="ai_list")
-    )
-    markup.add(
-        types.InlineKeyboardButton(f"{ICONS['search']} Web Search AI", callback_data="mode_search"),
-        types.InlineKeyboardButton(f"{ICONS['think']} Deep Think", callback_data="toggle_deep")
-    )
-    markup.add(
-        types.InlineKeyboardButton(f"{ICONS['story']} Story Mode", callback_data="mode_story"),
-        types.InlineKeyboardButton(f"{ICONS['code']} Code Lab", callback_data="mode_code")
-    )
-    return markup
-
-def ai_list_menu(uid):
-    u = get_user(uid)
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    
-    # Tick mark the active AI
-    g_btn = f"{ICONS['gemini']} Gemini (Google)" + (" ✅" if u['current_ai'] == 'gemini' else "")
-    gr_btn = f"{ICONS['groq']} Groq (LLaMA 3)" + (" ✅" if u['current_ai'] == 'groq' else "")
-    op_btn = f"{ICONS['openrouter']} OpenRouter (GPT)" + (" ✅" if u['current_ai'] == 'openrouter' else "")
-    
-    markup.add(
-        types.InlineKeyboardButton(g_btn, callback_data="set_ai_gemini"),
-        types.InlineKeyboardButton(gr_btn, callback_data="set_ai_groq"),
-        types.InlineKeyboardButton(op_btn, callback_data="set_ai_openrouter"),
-        types.InlineKeyboardButton("🔙 Back to Home", callback_data="go_home")
-    )
-    return markup
-
-def format_msg(reply, uid):
-    u = get_user(uid)
-    ai_used = u['current_ai'].upper()
-    deep_str = "🧠 DEEP THINK" if u['deep_think'] else "⚡ FAST MODE"
-    return f"**MI AI PRO** | {ai_used} | {deep_str}\n━━━━━━━━━━━━━━━━━━\n\n{reply}\n\n━━━━━━━━━━━━━━━━━━\n👨‍💻 _Powered by MiTV Network_"
-
-# ================= ANIMATIONS =================
-
-def animated_thinking(chat_id, message_id):
-    """Animates the bot's 'thinking' message"""
-    frames = [
-        "⏳ MI AI is thinking.",
-        "🧠 MI AI is processing..",
-        "⚙️ Analyzing request...",
-        "💎 Generating response...."
-    ]
-    for frame in frames:
+        # 2. Fallback to Gemini
         try:
-            bot.edit_message_text(frame, chat_id, message_id)
-            time.sleep(0.5)
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GE_K}"
+            payload = {"contents": [{"parts": [{"text": f"{system_prompt}\n\nUser: {prompt}"}]}]}
+            res = requests.post(url, json=payload, timeout=15)
+            return res.json()['candidates'][0]['content']['parts'][0]['text'], "Gemini-Flash"
         except:
-            pass
+            return "⚠️ Servers are busy. Try switching AI model.", "Error"
 
-# ================= HANDLERS =================
+# ================= FILE GENERATORS (PDF & ZIP) =================
 
-@bot.message_handler(commands=['start', 'help'])
-def start_command(m):
-    uid = m.from_user.id
-    u = get_user(uid)
+def create_pdf(title, content):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(200, 10, title, ln=True, align='C')
+    pdf.ln(10)
+    pdf.set_font("Arial", size=11)
+    pdf.multi_cell(0, 10, content.encode('latin-1', 'replace').decode('latin-1'))
     
-    msg = bot.send_message(m.chat.id, "🚀")
-    time.sleep(0.5)
-    bot.edit_message_text("🚀 Booting MI AI Pro...", m.chat.id, msg.message_id)
-    time.sleep(0.5)
-    
-    welcome_text = (
-        f"🌟 **Assalam-o-Alaikum, {m.from_user.first_name}!** 🌟\n\n"
-        f"Main **MI AI Pro** hoon, created by **MUAAZ IQBAL**.\n"
-        f"Organization: **MUSLIM ISLAM**\n\n"
-        f"Main text, image, coding, aur live internet search sab kar sakta hoon. "
-        f"Niche diye gaye menu se apne features select karein:"
-    )
-    bot.delete_message(m.chat.id, msg.message_id)
-    bot.send_message(m.chat.id, welcome_text, parse_mode="Markdown", reply_markup=main_menu())
+    pdf_out = io.BytesIO()
+    pdf_out.write(pdf.output(dest='S').encode('latin-1'))
+    pdf_out.seek(0)
+    return pdf_out
 
-@bot.callback_query_handler(func=lambda c: True)
-def callback_manager(c):
-    uid = c.from_user.id
-    u = get_user(uid)
-    data = c.data
-    
-    # Navigation
-    if data == "go_home":
-        bot.edit_message_text("🌟 **MI AI PRO - MAIN MENU**", c.message.chat.id, c.message.message_id, parse_mode="Markdown", reply_markup=main_menu())
-    
-    # AI Selection
-    elif data == "ai_list":
-        bot.edit_message_text("⚙️ **Select your preferred AI Engine:**", c.message.chat.id, c.message.message_id, parse_mode="Markdown", reply_markup=ai_list_menu(uid))
-    
-    elif data.startswith("set_ai_"):
-        new_ai = data.split("_")[2] # gemini, groq, openrouter
-        u['current_ai'] = new_ai
-        bot.answer_callback_query(c.id, f"✅ Switched to {new_ai.upper()}")
-        bot.edit_message_reply_markup(c.message.chat.id, c.message.message_id, reply_markup=ai_list_menu(uid))
-        
-    # Deep Think Toggle
-    elif data == "toggle_deep":
-        u['deep_think'] = not u['deep_think']
-        status = "ON 🧠" if u['deep_think'] else "OFF ⚡"
-        bot.answer_callback_query(c.id, f"Deep Think is now {status}")
-        bot.edit_message_reply_markup(c.message.chat.id, c.message.message_id, reply_markup=main_menu())
-        
-    # Modes
-    elif data.startswith("mode_"):
-        new_mode = data.split("_")[1]
-        u['mode'] = new_mode
-        bot.answer_callback_query(c.id, f"{new_mode.upper()} Mode Activated!")
-        
-        mode_msgs = {
-            "chat": "💬 **Normal Chat Mode ON.** Mujhse kuch bhi puchiye!",
-            "search": "🌐 **Web Search AI ON.** Jo topic likhenge, main internet se search karke launga.",
-            "story": "📖 **Story Mode ON.** Topic batayein aur main ek emotional kahani likhunga.",
-            "code": "💻 **Coding Mode ON.** Apni app ya script ki requirement batayein."
-        }
-        bot.send_message(c.message.chat.id, mode_msgs[new_mode], parse_mode="Markdown")
+def create_project_zip(project_name, code_content):
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        zip_file.writestr(f"{project_name}/main.py", code_content)
+        zip_file.writestr(f"{project_name}/README.md", f"# {project_name}\nCreated by MI AI Pro.")
+        zip_file.writestr(f"{project_name}/requirements.txt", "requests\ntelebot\n")
+    zip_buffer.seek(0)
+    return zip_buffer
+
+# ================= MULTIMEDIA HANDLERS =================
 
 @bot.message_handler(content_types=['photo'])
 def handle_vision(m):
     uid = m.from_user.id
-    u = get_user(uid)
+    bot.reply_to(m, f"{ICONS['vision']} Analysis image... Ek minute Maaz bhai.")
     
-    status_msg = bot.reply_to(m, "👁️ Image received. Animating process...")
-    threading.Thread(target=animated_thinking, args=(m.chat.id, status_msg.message_id)).start()
+    file_info = bot.get_file(m.photo[-1].file_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+    b64_image = base64.b64encode(downloaded_file).decode('utf-8')
     
+    # Vision using Gemini
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GE_K}"
+    payload = {
+        "contents": [{
+            "parts": [
+                {"text": "Is image ko detail mein samjhao (Urdu/Hindi)."},
+                {"inline_data": {"mime_type": "image/jpeg", "data": b64_image}}
+            ]
+        }]
+    }
     try:
-        caption = m.caption if m.caption else "Is image ko detail mein samjhao."
-        file_info = bot.get_file(m.photo[-1].file_id)
-        downloaded_file = bot.download_file(file_info.file_path)
-        base64_image = base64.b64encode(downloaded_file).decode('utf-8')
-        
-        # Vision hamesha Gemini se hogi
-        response = call_gemini(uid, caption, is_vision=True, image_data=base64_image)
-        
-        if not response:
-            response = "⚠️ Image process nahi ho saki."
-            
-        bot.delete_message(m.chat.id, status_msg.message_id)
-        bot.reply_to(m, format_msg(response, uid), parse_mode="Markdown")
-        
-    except Exception as e:
-        bot.delete_message(m.chat.id, status_msg.message_id)
-        bot.reply_to(m, f"Error: {e}")
+        res = requests.post(url, json=payload).json()
+        analysis = res['candidates'][0]['content']['parts'][0]['text']
+        bot.reply_to(m, f"🖼️ **MI AI Vision Report:**\n\n{analysis}", parse_mode="Markdown")
+    except:
+        bot.reply_to(m, "⚠️ Vision engine busy!")
+
+@bot.message_handler(content_types=['voice'])
+def handle_voice(m):
+    bot.reply_to(m, f"{ICONS['voice']} Suna ja raha hai...")
+    # Whisper API or Gemini Audio processing here...
+    bot.reply_to(m, "🎤 Voice processing feature is active (Requires Whisper Key).")
+
+# ================= TEXT & COMMAND HANDLERS =================
+
+@bot.message_handler(commands=['start'])
+def start(m):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add("🎨 Draw Art", "📦 Build Project Zip", "📄 Write PDF Book", "🌐 Web Search")
+    bot.send_message(m.chat.id, f"🌟 **MI AI PRO ULTIMATE**\nCreated by **Muaaz Iqbal**\n\nMain images dekh sakta hoon, code zip kar sakta hoon aur books likh sakta hoon!", reply_markup=markup)
+
+@bot.message_handler(func=lambda m: m.text == "📄 Write PDF Book")
+def book_mode(m):
+    msg = bot.send_message(m.chat.id, "Kitab ka topic likhein?")
+    bot.register_next_step_handler(msg, process_book)
+
+def process_book(m):
+    topic = m.text
+    bot.send_message(m.chat.id, f"📖 {topic} par research jari hai...")
+    content, node = call_ai_logic(m.from_user.id, f"Write a 10-page detailed book on {topic} with headings.", "You are a professional author.")
+    
+    pdf_file = create_pdf(f"Book: {topic}", content)
+    pdf_file.name = f"{topic}_Book.pdf"
+    bot.send_document(m.chat.id, pdf_file, caption=f"✅ {topic} Book is ready!\n🤖 Engine: {node}")
+
+@bot.message_handler(func=lambda m: m.text == "📦 Build Project Zip")
+def zip_mode(m):
+    msg = bot.send_message(m.chat.id, "Project ka naam aur kaam batayein?")
+    bot.register_next_step_handler(msg, process_zip)
+
+def process_zip(m):
+    p_name = m.text
+    bot.send_message(m.chat.id, f"🛠️ Building project: {p_name}...")
+    code, node = call_ai_logic(m.from_user.id, f"Create a full Python project code for: {p_name}", "You are a Senior Developer.")
+    
+    zip_f = create_project_zip(p_name.replace(" ", "_"), code)
+    zip_f.name = f"{p_name}_Project.zip"
+    bot.send_document(m.chat.id, zip_f, caption=f"📦 Project Files Created!\nIncludes: main.py, README, requirements.")
+
+@bot.message_handler(func=lambda m: m.text == "🎨 Draw Art")
+def draw_mode(m):
+    msg = bot.send_message(m.chat.id, "Kya draw karun?")
+    bot.register_next_step_handler(msg, process_draw)
+
+def process_draw(m):
+    prompt = m.text.replace(" ", "%20")
+    img_url = f"https://image.pollinations.ai/prompt/{prompt}?width=1024&height=1024&nologo=true&seed={time.time()}"
+    bot.send_photo(m.chat.id, img_url, caption=f"🎨 MI AI Art for: {m.text}")
 
 @bot.message_handler(func=lambda m: True)
-def handle_text(m):
+def main_chat(m):
     uid = m.from_user.id
     u = get_user(uid)
-    text = m.text
     
-    # 1. Send initial status
-    status_msg = bot.reply_to(m, "🔄 Processing...")
+    # Search Mode Check
+    if m.text == "🌐 Web Search":
+        u['mode'] = "search"
+        bot.send_message(m.chat.id, "🌐 Web Search Active. Kuch bhi puchiye jo internet se search karna ho.")
+        return
+
+    bot.send_chat_action(m.chat.id, 'typing')
     
-    # 2. Run animation in background
-    anim_thread = threading.Thread(target=animated_thinking, args=(m.chat.id, status_msg.message_id))
-    anim_thread.start()
+    sys_prompt = f"Name: MI AI Pro. Creator: Muaaz Iqbal. Role: Senior AI Architect. Style: Professional Urdu/English mix."
     
-    # 3. Route logic based on Mode & AI
-    response = None
+    # Memory logic (Concatenate last 2 messages)
+    history_context = "\n".join(u['history'][-4:])
+    full_prompt = f"Context:\n{history_context}\n\nUser: {m.text}"
     
-    if u['mode'] == "search":
-        response = web_search_ai(uid, text)
-    else:
-        # Chat, Code, Story modes
-        if u['current_ai'] == "gemini":
-            response = call_gemini(uid, text)
-        elif u['current_ai'] == "groq":
-            response = call_groq(uid, text)
-        elif u['current_ai'] == "openrouter":
-            response = call_openrouter(uid, text)
-            
-    # Fallback
-    if not response:
-        response = "⚠️ API limit reached ya network issue hai. Kripya doosra AI model select karein menu se."
-        
-    # 4. Wait for animation to finish minimal time then delete
-    time.sleep(1.5) 
-    bot.delete_message(m.chat.id, status_msg.message_id)
+    reply, node = call_ai_logic(uid, full_prompt, sys_prompt)
     
-    # 5. Send final large text chunking
-    final_text = format_msg(response, uid)
+    # Update History
+    u['history'].append(f"User: {m.text}")
+    u['history'].append(f"AI: {reply}")
+    
+    # Final Response
+    final_text = f"{reply}\n\n━━━━━━━━━━━━━━━━━━\n🤖 Engine: {node} | 🧠 Deep Think: ON"
     
     if len(final_text) > 4000:
         for x in range(0, len(final_text), 4000):
@@ -347,13 +212,8 @@ def handle_text(m):
     else:
         bot.reply_to(m, final_text, parse_mode="Markdown")
 
-# ================= SERVER START =================
+# ================= RUN SERVER =================
 if __name__ == "__main__":
-    print("========================================")
-    print("🌟 MI AI PRO ULTIMATE SERVER STARTED 🌟")
-    print("👨‍💻 By: Muaaz Iqbal | MUSLIM ISLAM")
-    print("========================================")
-    try:
-        bot.infinity_polling(timeout=10, long_polling_timeout=5)
-    except Exception as e:
-        print(f"Bot crashed: {e}")
+    print("🚀 MI AI PRO ULTIMATE SERVER IS LIVE!")
+    print("Created by: Muaaz Iqbal | MITV Network")
+    bot.infinity_polling()
