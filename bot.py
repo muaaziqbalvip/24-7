@@ -1,90 +1,200 @@
 import telebot
 import requests
-import json
-import base64
 from telebot import types
 
-# --- Keys Masking (GitHub Secret Scanner Bypass) ---
-def d(s): return base64.b64decode(s).decode('utf-8')
+# ================= CONFIG =================
+BOT_TOKEN = "Nzk0MjM2ODc4MTpBQUdGRGxtbkJLVkt1bE1SM0FIRC1MWElnSE9nQ1hqQl9KYw=="
+GEMINI_API_KEY = "QUl6YVN5RHN3b2RDVE11NkVwUUxjTTZCUWh2ODNMYTBadW5oOTRJ"
+GROQ_API_KEY = "Z3NrX2ppRXJ6eXY1ZmJZbDF5c29BdHAxV0dyeWJ6RllEa3o0S01mVHQ3dFl0WkY2UkM4YlFjMjc="
+OPENROUTER_API_KEY = "c2stb3ItdjEtNWQzMDYzMGY3MmFmYWMwZTllYWU2MmRlYjMwOGRjYTY5Njc2MmVhZjY5NjkxNTA0ZWUxZTMwZDkyMmJkODA5MQ=="
 
-# Aap ki keys ko encoded format mein rakha hai
-T_K = d("Nzk0MjM2ODc4MTpBQUdGRGxtbkJLVkt1bE1SM0FIRC1MWElnSE9nQ1hqQl9KYw==")
-G_K = d("Z3NrX2ppRXJ6eXY1ZmJZbDF5c29BdHAxV0dyeWJ6RllEa3o0S01mVHQ3dFl0WkY2UkM4YlFjMjc=")
-O_K = d("c2stb3ItdjEtNWQzMDYzMGY3MmFmYWMwZTllYWU2MmRlYjMwOGRjYTY5Njc2MmVhZjY5NjkxNTA0ZWUxZTMwZDkyMmJkODA5MQ==")
-GE_K = d("QUl6YVN5RHN3b2RDVE11NkVwUUxjTTZCUWh2ODNMYTBadW5oOTRJ")
+DB_BASE_URL = "https://ramadan-2385b-default-rtdb.firebaseio.com/users"
 
-DB_URL = "https://ramadan-2385b-default-rtdb.firebaseio.com/users"
+bot = telebot.TeleBot(BOT_TOKEN)
 
-bot = telebot.TeleBot(T_K)
-
-# --- Database Helper ---
-def db_action(uid, data=None, method='get'):
-    url = f"{DB_URL}/{uid}.json"
+# ================= FIREBASE =================
+def update_user_data(uid, data):
     try:
-        if method == 'put': requests.patch(url, json=data, timeout=10)
-        else: return requests.get(url, timeout=10).json() or {}
-    except: return {}
+        requests.patch(f"{DB_BASE_URL}/{uid}.json", json=data)
+    except:
+        pass
 
-# --- AI Multi-Engine ---
-def ask_ai(history, engine):
+def get_user_data(uid):
     try:
-        if engine == "groq":
-            url = "https://api.groq.com/openai/v1/chat/completions"
-            h = {"Authorization": f"Bearer {G_K}", "Content-Type": "application/json"}
-            p = {"model": "llama-3.3-70b-versatile", "messages": history}
-            res = requests.post(url, headers=h, json=p, timeout=15)
-            return res.json()['choices'][0]['message']['content'], "Groq-Node"
+        res = requests.get(f"{DB_BASE_URL}/{uid}.json")
+        return res.json() or {}
+    except:
+        return {}
 
-        elif engine == "openrouter":
-            url = "https://openrouter.ai/api/v1/chat/completions"
-            h = {"Authorization": f"Bearer {O_K}", "Content-Type": "application/json"}
-            p = {"model": "google/gemma-2-9b-it:free", "messages": history}
-            res = requests.post(url, headers=h, json=p, timeout=15)
-            return res.json()['choices'][0]['message']['content'], "Router-Node"
+# ================= AI APIs =================
 
-        elif engine == "gemini":
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GE_K}"
-            gemini_parts = [{"role": "user" if m['role']=="user" else "model", "parts": [{"text": m['content']}]} for m in history]
-            res = requests.post(url, json={"contents": gemini_parts}, timeout=15)
-            return res.json()['candidates'][0]['content']['parts'][0]['text'], "Gemini-Node"
-    except: return None, None
+# ---- GEMINI ----
+def ask_gemini(history):
+    models = ["gemini-1.5-flash", "gemini-1.5-pro"]
 
-# --- Bot UI & Handlers ---
+    for model in models:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
+            res = requests.post(url, json={"contents": history}, timeout=15)
+
+            if res.status_code == 200:
+                data = res.json()
+                text = data['candidates'][0]['content']['parts'][0]['text']
+                return text, f"Gemini ({model})"
+        except:
+            continue
+
+    return None, None
+
+
+# ---- GROQ ----
+def ask_groq(history):
+    try:
+        url = "https://api.groq.com/openai/v1/chat/completions"
+
+        messages = []
+        for h in history:
+            role = "assistant" if h["role"] == "model" else "user"
+            messages.append({"role": role, "content": h["parts"][0]["text"]})
+
+        payload = {
+            "model": "llama3-70b-8192",
+            "messages": messages
+        }
+
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        res = requests.post(url, json=payload, headers=headers, timeout=15)
+
+        if res.status_code == 200:
+            text = res.json()["choices"][0]["message"]["content"]
+            return text, "Groq (LLaMA3)"
+
+    except:
+        pass
+
+    return None, None
+
+
+# ---- OPENROUTER ----
+def ask_openrouter(history):
+    try:
+        url = "https://openrouter.ai/api/v1/chat/completions"
+
+        messages = []
+        for h in history:
+            role = "assistant" if h["role"] == "model" else "user"
+            messages.append({"role": role, "content": h["parts"][0]["text"]})
+
+        payload = {
+            "model": "openai/gpt-3.5-turbo",
+            "messages": messages
+        }
+
+        headers = {
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        res = requests.post(url, json=payload, headers=headers, timeout=15)
+
+        if res.status_code == 200:
+            text = res.json()["choices"][0]["message"]["content"]
+            return text, "OpenRouter (GPT)"
+
+    except:
+        pass
+
+    return None, None
+
+
+# ================= SMART ROUTER =================
+def ask_mi_ai(history, mode="fast"):
+
+    # priority order
+    if mode == "pro":
+        engines = [ask_gemini, ask_groq, ask_openrouter]
+    else:
+        engines = [ask_gemini, ask_openrouter, ask_groq]
+
+    for engine in engines:
+        reply, name = engine(history)
+        if reply:
+            return reply, name
+
+    return "⚠️ MI AI: Sab AI servers busy hain, dobara try karo.", "None"
+
+
+# ================= BOT =================
+
 @bot.message_handler(commands=['start'])
-def welcome(message):
+def start(message):
     uid = str(message.from_user.id)
-    db_action(uid, {"name": message.from_user.first_name, "history": []}, 'put')
-    markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    markup.add("🚀 Fast Mode", "🧠 Pro Mode", "🧹 Clear Memory")
-    bot.send_message(message.chat.id, "MI AI ACTIVE! 🚀\nServers: Groq, OpenRouter, Gemini Loaded.", reply_markup=markup)
+
+    update_user_data(uid, {
+        "mode": "fast",
+        "history": []
+    })
+
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("🚀 Fast Mode", "🧠 Pro Mode", "🧹 Clear Memory")
+
+    bot.send_message(
+        message.chat.id,
+        "🤖 *MI AI Activated*\n\nAsk anything...",
+        parse_mode="Markdown",
+        reply_markup=kb
+    )
+
 
 @bot.message_handler(func=lambda m: True)
-def chat(message):
+def handle(message):
     uid = str(message.from_user.id)
-    if message.text == "🧹 Clear Memory":
-        db_action(uid, {"history": []}, 'put')
-        bot.reply_to(message, "Memory Cleared! 🧹")
+    text = message.text
+
+    # ===== MODES =====
+    if text == "🚀 Fast Mode":
+        update_user_data(uid, {"mode": "fast"})
+        bot.reply_to(message, "⚡ Fast Mode ON")
         return
 
-    bot.send_chat_action(message.chat.id, 'typing')
-    data = db_action(uid)
-    history = data.get("history", [])[-10:] if isinstance(data.get("history"), list) else []
-    history.append({"role": "user", "content": message.text})
+    if text == "🧠 Pro Mode":
+        update_user_data(uid, {"mode": "pro"})
+        bot.reply_to(message, "🧠 Pro Mode ON")
+        return
 
-    # Routing Logic
-    reply, node = None, None
-    for eng in ["groq", "openrouter", "gemini"]:
-        reply, node = ask_ai(history, eng)
-        if reply: break
+    if text == "🧹 Clear Memory":
+        update_user_data(uid, {"history": []})
+        bot.reply_to(message, "🧹 Memory Cleared")
+        return
 
-    if reply:
-        history.append({"role": "assistant", "content": reply})
-        db_action(uid, {"history": history}, 'put')
-        bot.reply_to(message, f"{reply}\n\n`[Node: {node}]`", parse_mode="Markdown")
-    else:
-        bot.reply_to(message, "❌ All AI Nodes are busy. Try later.")
+    bot.send_chat_action(message.chat.id, "typing")
 
-# --- Run ---
-if __name__ == "__main__":
-    print("MI AI (Secure Mode) is Online...")
-    bot.infinity_polling()
+    user = get_user_data(uid)
+    history = user.get("history", [])
+    mode = user.get("mode", "fast")
+
+    if not isinstance(history, list):
+        history = []
+
+    # add user msg
+    history.append({"role": "user", "parts": [{"text": text}]})
+
+    # AI RESPONSE
+    reply, model = ask_mi_ai(history, mode)
+
+    if model != "None":
+        history.append({"role": "model", "parts": [{"text": reply}]})
+        history = history[-10:]
+        update_user_data(uid, {"history": history})
+
+    final = f"{reply}\n\n`[{model}]`"
+    bot.reply_to(message, final, parse_mode="Markdown")
+
+
+# ================= START =================
+print("🚀 MI AI RUNNING (Multi-AI Routing Enabled)")
+bot.infinity_polling()
