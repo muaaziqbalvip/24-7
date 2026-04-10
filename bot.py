@@ -3,11 +3,12 @@ import requests
 from telebot import types
 
 # ================= CONFIG =================
-BOT_TOKEN = "Nzk0MjM2ODc4MTpBQUdGRGxtbkJLVkt1bE1SM0FIRC1MWElnSE9nQ1hqQl9KYw=="
-GEMINI_API_KEY = "QUl6YVN5RHN3b2RDVE11NkVwUUxjTTZCUWh2ODNMYTBadW5oOTRJ"
-GROQ_API_KEY = "Z3NrX2ppRXJ6eXY1ZmJZbDF5c29BdHAxV0dyeWJ6RllEa3o0S01mVHQ3dFl0WkY2UkM4YlFjMjc="
-OPENROUTER_API_KEY = "c2stb3ItdjEtNWQzMDYzMGY3MmFmYWMwZTllYWU2MmRlYjMwOGRjYTY5Njc2MmVhZjY5NjkxNTA0ZWUxZTMwZDkyMmJkODA5MQ=="
+import os
 
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 DB_BASE_URL = "https://ramadan-2385b-default-rtdb.firebaseio.com/users"
 
 bot = telebot.TeleBot(BOT_TOKEN)
