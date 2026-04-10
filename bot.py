@@ -1,6 +1,7 @@
 import telebot
 import requests
 import os
+import json
 from telebot import types
 
 # ================= CONFIG =================
@@ -11,22 +12,67 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# ================= MEMORY =================
-users = {}
+# ================= DATABASE =================
+DB_FILE = "mi_ai_users.json"
+
+def load_db():
+    try:
+        with open(DB_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return {}
+
+def save_db(data):
+    with open(DB_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+db = load_db()
+
+# ================= USER SYSTEM =================
 
 def get_user(uid):
-    if uid not in users:
-        users[uid] = {
-            "mode": "gemini"
+    if uid not in db:
+        db[uid] = {
+            "step": "name",
+            "name": "",
+            "phone": "",
+            "email": "",
+            "address": "",
+            "mode": "gemini",
+            "history": []
         }
-    return users[uid]
+        save_db(db)
+    return db[uid]
 
-# ================= AI MODELS =================
+def update(uid):
+    save_db(db)
 
-def gemini_ai(text):
+# ================= AI CORE =================
+
+def ai_prompt(text):
+    return f"""
+Tum MI AI ho (Created by MUAAZ IQBAL).
+
+RULES:
+- Long detailed answer
+- Step-by-step explanation
+- Urdu + English mix
+- Friendly tone
+
+User:
+{text}
+"""
+
+# ================= GEMINI =================
+
+def gemini(text):
     try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-        payload = {"contents": [{"parts": [{"text": text}]}]}
+        payload = {
+            "contents": [{
+                "parts": [{"text": ai_prompt(text)}]
+            }]
+        }
         r = requests.post(url, json=payload, timeout=20)
         if r.status_code == 200:
             return r.json()['candidates'][0]['content']['parts'][0]['text']
@@ -34,14 +80,15 @@ def gemini_ai(text):
         pass
     return None
 
+# ================= GROQ =================
 
-def groq_ai(text):
+def groq(text):
     try:
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
         payload = {
             "model": "llama3-70b-8192",
-            "messages": [{"role": "user", "content": text}]
+            "messages": [{"role": "user", "content": ai_prompt(text)}]
         }
         r = requests.post(url, json=payload, headers=headers)
         if r.status_code == 200:
@@ -50,14 +97,15 @@ def groq_ai(text):
         pass
     return None
 
+# ================= OPENROUTER =================
 
-def openrouter_ai(text):
+def openrouter(text):
     try:
         url = "https://openrouter.ai/api/v1/chat/completions"
         headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
         payload = {
             "model": "openai/gpt-3.5-turbo",
-            "messages": [{"role": "user", "content": text}]
+            "messages": [{"role": "user", "content": ai_prompt(text)}]
         }
         r = requests.post(url, json=payload, headers=headers)
         if r.status_code == 200:
@@ -66,27 +114,27 @@ def openrouter_ai(text):
         pass
     return None
 
+# ================= SMART AI ROUTER =================
 
 def smart_ai(text):
-    for fn in [gemini_ai, openrouter_ai, groq_ai]:
+    for fn in [gemini, openrouter, groq]:
         res = fn(text)
         if res:
             return res
-    return "⚠️ MI AI busy hai, dobara try karo."
+    return "⚠️ MI AI busy hai, try again."
 
-# ================= SEARCH =================
+# ================= SEARCH ENGINE =================
 
-def web_search(query):
+def search(query):
     try:
         url = f"https://duckduckgo.com/html/?q={query}"
-        r = requests.get(url).text
-        return r[:1500]
+        return requests.get(url).text[:1500]
     except:
         return "Search failed"
 
-# ================= UI MENU =================
+# ================= MENU =================
 
-def main_menu():
+def menu():
     kb = types.InlineKeyboardMarkup()
 
     kb.row(
@@ -95,13 +143,13 @@ def main_menu():
     )
 
     kb.row(
-        types.InlineKeyboardButton("🖼 Image", callback_data="img"),
-        types.InlineKeyboardButton("🎥 Video", callback_data="video")
+        types.InlineKeyboardButton("📖 Story Mode", callback_data="story"),
+        types.InlineKeyboardButton("📊 Poll", callback_data="poll")
     )
 
     kb.row(
-        types.InlineKeyboardButton("📊 Poll", callback_data="poll"),
-        types.InlineKeyboardButton("⚙ AI Model", callback_data="model")
+        types.InlineKeyboardButton("👤 Profile", callback_data="profile"),
+        types.InlineKeyboardButton("⚙ Mode", callback_data="mode")
     )
 
     return kb
@@ -112,37 +160,11 @@ def main_menu():
 def start(m):
     bot.send_message(
         m.chat.id,
-        "🤖 *MI AI ACTIVATED*\n\n👨‍💻 Created by MUAAZ IQBAL\n\nSelect option:",
-        parse_mode="Markdown",
-        reply_markup=main_menu()
+        "🤖 MI AI MASTER SYSTEM\n👨‍💻 Created by MUAAZ IQBAL\n\nStart registration...",
+        reply_markup=menu()
     )
 
-# ================= CALLBACK =================
-
-@bot.callback_query_handler(func=lambda call: True)
-def callback(call):
-    uid = str(call.from_user.id)
-    u = get_user(uid)
-
-    if call.data == "ai":
-        bot.send_message(call.message.chat.id, "💬 Ab apna question bhejo (Urdu/Arabic/English)")
-
-    if call.data == "search":
-        bot.send_message(call.message.chat.id, "🌐 Use: /search query")
-
-    if call.data == "img":
-        bot.send_message(call.message.chat.id, "🖼 Image bhejo")
-
-    if call.data == "video":
-        bot.send_message(call.message.chat.id, "🎥 Video bhejo")
-
-    if call.data == "poll":
-        bot.send_message(call.message.chat.id, "📊 Use: /poll question")
-
-    if call.data == "model":
-        bot.send_message(call.message.chat.id, "⚙ Type: gemini / groq / openrouter")
-
-# ================= TEXT HANDLER =================
+# ================= REGISTRATION LOGIC =================
 
 @bot.message_handler(func=lambda m: True)
 def handle(m):
@@ -150,51 +172,93 @@ def handle(m):
     u = get_user(uid)
     text = m.text
 
-    # model switch
-    if text.lower() in ["gemini", "groq", "openrouter"]:
-        u["mode"] = text.lower()
-        bot.reply_to(m, f"⚙ Model set: {text}")
+    # ---------------- REGISTRATION FLOW ----------------
+    if u["step"] == "name":
+        u["name"] = text
+        u["step"] = "phone"
+        update(uid)
+        bot.reply_to(m, "📱 Phone number send karo")
         return
 
-    # search
+    if u["step"] == "phone":
+        u["phone"] = text
+        u["step"] = "email"
+        update(uid)
+        bot.reply_to(m, "📧 Email send karo")
+        return
+
+    if u["step"] == "email":
+        u["email"] = text
+        u["step"] = "address"
+        update(uid)
+        bot.reply_to(m, "🏠 Address send karo")
+        return
+
+    if u["step"] == "address":
+        u["address"] = text
+        u["step"] = "done"
+        update(uid)
+        bot.reply_to(m, "✅ Registration complete! Ab MI AI ready hai 🤖")
+        return
+
+    # ---------------- PROFILE ----------------
+    if text == "/profile":
+        bot.reply_to(m, f"""
+👤 USER PROFILE
+
+Name: {u['name']}
+Phone: {u['phone']}
+Email: {u['email']}
+Address: {u['address']}
+""")
+        return
+
+    # ---------------- SEARCH ----------------
     if text.startswith("/search"):
-        q = text.replace("/search", "").strip()
-        result = web_search(q)
-        bot.reply_to(m, f"🌐 SEARCH RESULT:\n\n{result}")
+        q = text.replace("/search", "")
+        bot.reply_to(m, f"🌐 SEARCH RESULT:\n\n{search(q)}")
         return
 
-    # poll
+    # ---------------- POLL ----------------
     if text.startswith("/poll"):
-        q = text.replace("/poll", "").strip()
-        bot.send_poll(m.chat.id, q or "MI AI Poll", ["Yes", "No", "Maybe"])
+        q = text.replace("/poll", "")
+        bot.send_poll(m.chat.id, q, ["Yes", "No", "Maybe"])
         return
 
-    # AI chat
+    # ---------------- STORY MODE ----------------
+    if "story" in text.lower():
+        text = f"""
+Cinematic detailed story likho:
+{text}
+"""
+
+    # ---------------- AI RESPONSE ----------------
     bot.send_chat_action(m.chat.id, "typing")
     reply = smart_ai(text)
 
-    final = f"""
-🤖 *MI AI RESPONSE*
+    bot.reply_to(m, f"""
+🤖 MI AI RESPONSE
 
 {reply}
 
-✨ Urdu • Arabic • English Supported
-👨‍💻 By MUAAZ IQBAL
-"""
+👨‍💻 Created by MUAAZ IQBAL
+""")
 
-    bot.reply_to(m, final, parse_mode="Markdown")
-
-# ================= MEDIA HANDLING =================
+# ================= MEDIA =================
 
 @bot.message_handler(content_types=['photo'])
 def photo(m):
-    bot.reply_to(m, "🖼 Image received by MI AI")
+    bot.reply_to(m, "🖼 Image received (vision upgrade needed for analysis)")
 
 @bot.message_handler(content_types=['video'])
 def video(m):
-    bot.reply_to(m, "🎥 Video received by MI AI")
+    bot.reply_to(m, "🎥 Video received")
 
-# ================= START =================
+@bot.message_handler(content_types=['voice'])
+def voice(m):
+    bot.reply_to(m, "🎤 Voice received (speech-to-text upgrade needed)")
 
-print("🚀 MI AI PRO RUNNING...")
+# ================= RUN =================
+
+print("🚀 MI AI MASTER SYSTEM RUNNING...")
 bot.infinity_polling()
