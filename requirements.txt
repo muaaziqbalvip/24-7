@@ -1,4 +1,4 @@
 pyTelegramBotAPI
-google-generativeai
-firebase-admin
 requests
+fpdf2
+python-dotenv
