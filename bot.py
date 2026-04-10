@@ -1,245 +1,291 @@
 import telebot
-import requests, os, time, json, base64, threading, urllib.parse, io, zipfile, random
 from telebot import types
+import requests, os, time, json, base64, threading, urllib.parse, io, zipfile, sqlite3
 from fpdf import FPDF
 from datetime import datetime
-from PIL import Image
 
 # ==============================================================
-# 👑 MI AI PRO SUPREME - MASTER VERSION
-# 👨‍💻 ARCHITECT: MUAAZ IQBAL | MiTV Network
-# 🏢 ORGANIZATION: MUSLIM ISLAM
+# 👑 MI AI - PUBLIC ENTERPRISE EDITION (THE BOMB PROGRAM)
+# 👨‍💻 ARCHITECT: MUAAZ IQBAL | ORGANIZATION: MUSLIM ISLAM
 # ==============================================================
 
-# --- 🔐 Security: GitHub Secret Variables ---
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-GEMINI_KEY = os.getenv("GEMINI_API_KEY")
-GROQ_KEY = os.getenv("GROQ_API_KEY")
+# --- 🔐 API KEYS (Environment Variables se lein ya yahan dalein) ---
+BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN")
+GEMINI_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_KEY")
+GROQ_KEY = os.getenv("GROQ_API_KEY", "YOUR_GROQ_KEY")
+OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY", "YOUR_OPENROUTER_KEY")
 
-bot = telebot.TeleBot(BOT_TOKEN)
+bot = telebot.TeleBot(BOT_TOKEN, threaded=True)
 
-# --- 🧠 SUPREME DATABASE & MEMORY REPOSITORY ---
-class MI_OS:
-    def __init__(self):
-        self.users = {}
+# ================= 🗄️ REAL DATABASE (USER DATA COLLECTION) =================
+# Ab data memory se delete nahi hoga, properly save hoga
+conn = sqlite3.connect('mi_ai_public.db', check_same_thread=False)
+c = conn.cursor()
+c.execute('''CREATE TABLE IF NOT EXISTS users (uid INTEGER PRIMARY KEY, name TEXT, engine TEXT, mode TEXT, queries INTEGER)''')
+conn.commit()
 
-    def get_u(self, uid, name="User"):
-        if uid not in self.users:
-            self.users[uid] = {
-                "name": name,
-                "engine": "groq",
-                "repo": {},        # Persistent file storage for ZIPs
-                "history": [],     # Global memory context
-                "mode": "Standard",
-                "current_project": None,
-                "stats": {"books": 0, "codes": 0, "searches": 0}
-            }
-        return self.users[uid]
+class MI_DataMaster:
+    def add_user(self, uid, name):
+        c.execute("INSERT OR IGNORE INTO users (uid, name, engine, mode, queries) VALUES (?, ?, 'groq', 'Pro Think', 0)", (uid, name))
+        conn.commit()
+    
+    def get_user(self, uid):
+        c.execute("SELECT * FROM users WHERE uid=?", (uid,))
+        return c.fetchone()
+    
+    def update_engine(self, uid, engine):
+        c.execute("UPDATE users SET engine=? WHERE uid=?", (engine, uid))
+        conn.commit()
 
-MI_CORE = MI_OS()
+    def add_query(self, uid):
+        c.execute("UPDATE users SET queries = queries + 1 WHERE uid=?", (uid,))
+        conn.commit()
 
-# --- 📊 DIGITAL PROGRESS UI (RED & WHITE THEME) ---
-def update_mi_progress(chat_id, mid, task, percent):
-    # Professional Progress Bar Design
-    bars = "🔴" * (percent // 10) + "⚪" * (10 - (percent // 10))
-    status_text = (
-        f"🚀 **MI AI SUPREME CORE ENGINE**\n"
-        f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"⚙️ **System Task:** `{task}`\n"
-        f"📊 **Processing:** [{bars}] {percent}%\n"
-        f"👨‍💻 **Architect:** Muaaz Iqbal\n"
-        f"📅 **Status:** {datetime.now().strftime('%H:%M:%S')}"
+db = MI_DataMaster()
+user_sessions = {} # For temporary files like cover images
+
+# ================= 🎨 UI: DEEP SIDEBAR & COLORFUL BUTTONS =================
+def public_dashboard():
+    m = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
+    m.add("📊 My Dashboard", "🧠 Deep AI Chat", "💻 Mega Code Lab")
+    m.add("🖼️ Web Art Gen", "🌐 Smart Google Sync", "🎬 Video Engine")
+    m.add("📕 Color PDF Book", "📦 ZIP Project Builder", "⚙️ Switch AI Model")
+    m.add("📖 Story Teller", "👁️ Vision Analysis", "🗑️ Reset Memory")
+    return m
+
+def ai_switch_menu():
+    m = types.InlineKeyboardMarkup(row_width=1)
+    m.add(
+        types.InlineKeyboardButton("⚡ Groq 70B (Fast Logic/Code)", callback_data="ai_groq"),
+        types.InlineKeyboardButton("💎 Gemini 1.5 Pro (Deep Vision)", callback_data="ai_gemini"),
+        types.InlineKeyboardButton("🌌 OpenRouter (GPT/Claude)", callback_data="ai_openrouter")
     )
+    return m
+
+# ================= 📊 COLORFUL DIGITAL PROGRESS =================
+def digital_progress(chat_id, task_name):
+    msg = bot.send_message(chat_id, f"🔴 **{task_name} Started...**", parse_mode="Markdown")
+    bars = ["🟥⬜⬜⬜⬜ 20%", "🟥🟥⬜⬜⬜ 40%", "🟥🟥🟥⬜⬜ 60%", "🟥🟥🟥🟥⬜ 80%", "🟩🟩🟩🟩🟩 100%"]
+    for b in bars:
+        try:
+            bot.edit_message_text(f"🔥 **MI AI PROCESSING**\n⚙️ `{task_name}`\n📊 {b}\n⚡ *Please Wait...*", chat_id, msg.message_id, parse_mode="Markdown")
+            time.sleep(0.5)
+        except: pass
+    return msg.message_id
+
+# ================= 🚀 THE 3-AI ENGINE CORE =================
+def mega_ai_brain(uid, prompt, sys_role="Super AI Assistant"):
+    db.add_query(uid)
+    user_data = db.get_user(uid)
+    engine = user_data[2] # groq, gemini, openrouter
+
+    sys_prompt = f"Your name is MI AI. Creator: Muaaz Iqbal. Role: {sys_role}. Be professional, beautiful, and highly accurate. Use emojis."
+
     try:
-        bot.edit_message_text(status_text, chat_id, mid, parse_mode="Markdown")
-    except: pass
+        if engine == "groq":
+            res = requests.post("https://api.groq.com/openai/v1/chat/completions", 
+                headers={"Authorization": f"Bearer {GROQ_KEY}"}, 
+                json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": prompt}]}
+            ).json()
+            return res['choices'][0]['message']['content'], "Groq 70B ⚡"
+            
+        elif engine == "openrouter":
+            res = requests.post("https://openrouter.ai/api/v1/chat/completions", 
+                headers={"Authorization": f"Bearer {OPENROUTER_KEY}"}, 
+                json={"model": "openai/gpt-3.5-turbo", "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": prompt}]}
+            ).json()
+            return res['choices'][0]['message']['content'], "OpenRouter 🌌"
+            
+        else: # Gemini Fallback & Default
+            res = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={GEMINI_KEY}", 
+                json={"contents": [{"parts": [{"text": f"{sys_prompt}\nUser: {prompt}"}]}]}
+            ).json()
+            return res['candidates'][0]['content']['parts'][0]['text'], "Gemini Pro 💎"
+    except Exception as e:
+        return "⚠️ All AI nodes overloaded. Please try again.", "Error"
 
-# --- ⌨️ SUPREME UI: SIDEBAR & TOOLBARS ---
-def get_supreme_sidebar():
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
-    markup.add("🏠 Dashboard", "🧠 Deep Think", "💻 Ultra Code Lab")
-    markup.add("🖼️ Art Vision", "🌐 Global Research", "🎬 Video Gen")
-    markup.add("📕 Luxury PDF Book", "📦 ZIP Factory", "⚙️ AI Control")
-    return markup
+# ================= 🌐 SMART GOOGLE SYNC (AI + Search) =================
+def ai_google_search(uid, query):
+    # AI analyzes query, fetches real-time lookalike data, and mixes with image
+    img_url = f"https://pollinations.ai/p/{urllib.parse.quote(query)}?width=800&height=400"
+    ai_report, node = mega_ai_brain(uid, f"Search Google for latest info, top articles, and deep details about: {query}. Give a colorful, highly detailed report with bullet points.", "Global Web Researcher")
+    return ai_report, img_url, node
 
-def ai_control_menu():
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    markup.add(
-        types.InlineKeyboardButton("⚡ Llama 3.3 70B (Fast Coding)", callback_data="set_groq"),
-        types.InlineKeyboardButton("💎 Gemini Pro (Deep Logic)", callback_data="set_gemini"),
-        types.InlineKeyboardButton("🗑️ Wipe Repository", callback_data="clear_repo")
-    )
-    return markup
-
-# --- 🚀 CORE ENGINES: LONG CODE & RESEARCH ---
-def call_supreme_ai(uid, prompt, system_instruction):
-    u = MI_CORE.get_u(uid)
-    memory = "\n".join(u['history'][-15:]) # Enhanced memory recall
-    
-    if u['engine'] == "groq":
-        url = "https://api.groq.com/openai/v1/chat/completions"
-        headers = {"Authorization": f"Bearer {GROQ_KEY}"}
-        payload = {
-            "model": "llama-3.3-70b-versatile",
-            "messages": [
-                {"role": "system", "content": f"Name: MI AI. Creator: Muaaz Iqbal. Role: {system_instruction}"},
-                {"role": "user", "content": f"Context Memory:\n{memory}\n\nTask: {prompt}"}
-            ]
-        }
-        res = requests.post(url, json=payload, headers=headers).json()
-        ans = res['choices'][0]['message']['content']
-    else:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={GEMINI_KEY}"
-        payload = {"contents": [{"parts": [{"text": f"{system_instruction}\n{prompt}"}]}]}
-        res = requests.post(url, json=payload).json()
-        ans = res['candidates'][0]['content']['parts'][0]['text']
-
-    u['history'].append(f"U: {prompt[:100]}"); u['history'].append(f"AI: {ans[:100]}")
-    return ans
-
-# --- 📂 ZIP FACTORY: FULL FOLDER STRUCTURE ---
-def build_zip_repository(uid, requirements):
-    u = MI_CORE.get_u(uid)
-    # This prompt forces AI to act as a File System
-    prompt = f"""
-    Create a complete professional file structure for: {requirements}. 
-    You must provide multiple files. Format your response exactly as:
-    FILE: folder/filename.ext
-    CODE: (the content of the file)
-    Repeat this for every file in the project including README.md and index files.
-    """
-    raw_data = call_supreme_ai(uid, prompt, "Senior Software Architect & Full-Stack Developer")
-    
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w") as z:
-        chunks = raw_data.split("FILE:")[1:]
-        for chunk in chunks:
-            try:
-                parts = chunk.split("CODE:")
-                fname = parts[0].strip()
-                fcontent = parts[1].strip()
-                z.writestr(fname, fcontent)
-                u['repo'][fname] = fcontent # Saving in user's virtual repo
-            except: continue
-        z.writestr("MI_AI_INFO.txt", f"Architected by MI AI Pro for Muaaz Iqbal.\nTime: {datetime.now()}")
-    
-    buf.seek(0)
-    return buf
-
-# --- 📕 LUXURY PDF BOOK: COLORFUL & IMAGE INTEGRATED ---
-def build_luxury_book(uid, topic, cover_img_id=None):
-    u = MI_CORE.get_u(uid)
-    # Step 1: Deep Research
-    research_content = call_supreme_ai(uid, f"Write a 100-page style deep research book on {topic} with Chapters, Index, and Scientific detail.", "Professional Researcher")
+# ================= 📕 LUXURY PDF & TEMPLATES =================
+def build_color_pdf(uid, topic, cover_img_path=None):
+    content, _ = mega_ai_brain(uid, f"Write a 50+ page style comprehensive book on '{topic}'. Include Index, Chapters, and conclusion.", "Master Author")
     
     pdf = FPDF()
+    # COVER PAGE
     pdf.add_page()
-    
-    # LUXURY COVER PAGE
-    pdf.set_fill_color(220, 20, 60) # Crimson Red Theme
+    pdf.set_fill_color(30, 30, 30) # Dark Beautiful Background
     pdf.rect(0, 0, 210, 297, 'F')
     
-    if cover_img_id:
-        f_info = bot.get_file(cover_img_id)
-        img_data = bot.download_file(f_info.file_path)
-        with open("temp_cover.jpg", "wb") as f: f.write(img_data)
-        pdf.image("temp_cover.jpg", x=10, y=60, w=190)
-    
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_font("Arial", 'B', 35)
-    pdf.text(30, 40, topic.upper())
-    pdf.set_font("Arial", 'I', 15)
-    pdf.text(30, 280, f"Published by MI AI Pro | Master: Muaaz Iqbal")
+    if cover_img_path and os.path.exists(cover_img_path):
+        pdf.image(cover_img_path, x=20, y=50, w=170)
+    else: # AI Auto Cover
+        pdf.set_text_color(255, 100, 100)
+        pdf.set_font("Arial", 'B', 40)
+        pdf.text(30, 100, "MI AI EXCLUSIVE")
 
-    # CONTENT PAGES
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Arial", 'B', 30)
+    pdf.text(20, 180, topic[:30].upper())
+    pdf.set_font("Arial", size=15)
+    pdf.text(20, 200, "Authored by MI AI | Muaaz Iqbal")
+
+    # CONTENT PAGE (Light Theme)
     pdf.add_page()
     pdf.set_text_color(0, 0, 0)
-    pdf.set_font("Arial", size=11)
-    pdf.multi_cell(0, 10, research_content.encode('latin-1', 'replace').decode('latin-1'))
+    pdf.set_font("Arial", size=12)
+    clean_text = content.encode('latin-1', 'replace').decode('latin-1')
+    pdf.multi_cell(0, 10, clean_text)
     
     buf = io.BytesIO()
     pdf.output(buf)
     buf.seek(0)
     return buf
 
-# --- 🤖 SUPREME HANDLERS ---
+# ================= 📦 MEGA ZIP CODER (Long Project Architect) =================
+def zip_project_builder(uid, req):
+    sys_req = "Generate a full Python/Web project. Return data strictly as: FILE: filename.ext\nCODE:\ncode_here\n"
+    raw_code, _ = mega_ai_brain(uid, req, sys_req)
+    
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        try:
+            files = raw_code.split("FILE:")[1:]
+            for f in files:
+                name = f.split("CODE:")[0].strip()
+                code = f.split("CODE:")[1].strip()
+                z.writestr(name, code)
+            z.writestr("MI_AI_README.md", f"# Auto-Generated by MI AI\nCreator: Muaaz Iqbal\nTopic: {req}")
+        except:
+            z.writestr("logic.txt", raw_code) # Fallback if AI formatting fails
+    buf.seek(0)
+    return buf
+
+# ================= 🤖 BOT HANDLERS & ROUTING =================
 
 @bot.message_handler(commands=['start'])
-def supreme_start(m):
-    u = MI_CORE.get_u(m.from_user.id, m.from_user.first_name)
-    welcome = (f"🔴 **MI AI PRO SUPREME V5.0**\n"
-               f"━━━━━━━━━━━━━━━━━━━━\n"
-               f"Assalam-o-Alaikum, **Master {u['name']}**.\n\n"
-               f"Main aik Ultra-Deep AI hoon jise **Muaaz Iqbal** ne architect kiya hai.\n"
-               f"Main Full-Stack Coding, Deep Research, اور Luxury Books بنانے میں مہارت رکھتا ہوں۔")
-    bot.send_message(m.chat.id, welcome, parse_mode="Markdown", reply_markup=get_supreme_sidebar())
+def start_public(m):
+    db.add_user(m.from_user.id, m.from_user.first_name)
+    user_sessions[m.from_user.id] = {"cover_img": None}
+    welcome = (f"🌟 **Welcome to MI AI PUBLIC EDITION** 🌟\n\n"
+               f"Hello **{m.from_user.first_name}**! I am **MI AI**, a Supreme System created by **Muaaz Iqbal**.\n\n"
+               f"🔹 I can write Long Codes & build ZIP files.\n"
+               f"🔹 I can create Colorful PDF Books.\n"
+               f"🔹 I can do Smart Google Searches with Images.\n"
+               f"🔹 I am powered by Groq, Gemini & OpenRouter.\n\n"
+               f"👇 *Use the powerful Dashboard below to start!*")
+    bot.send_message(m.chat.id, welcome, parse_mode="Markdown", reply_markup=public_dashboard())
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith('ai_'))
+def switch_ai_model(c):
+    engine = c.data.split('_')[1]
+    db.update_engine(c.from_user.id, engine)
+    bot.answer_callback_query(c.id, f"✅ AI Switched to {engine.upper()}")
+    bot.edit_message_text(f"⚙️ **System Updated:** You are now using **{engine.upper()}** Engine.", c.message.chat.id, c.message.message_id)
+
+@bot.message_handler(content_types=['photo'])
+def handle_photos(m):
+    # Save photo for potential PDF cover or Vision analysis
+    f_info = bot.get_file(m.photo[-1].file_id)
+    img_data = bot.download_file(f_info.file_path)
+    path = f"cover_{m.from_user.id}.jpg"
+    with open(path, "wb") as f: f.write(img_data)
+    
+    if m.from_user.id not in user_sessions: user_sessions[m.from_user.id] = {}
+    user_sessions[m.from_user.id]["cover_img"] = path
+    
+    bot.reply_to(m, "📸 **Image Saved!**\nI can use this as a Cover Image for your next **Color PDF Book**, or click '👁️ Vision Analysis' to analyze it.")
 
 @bot.message_handler(func=lambda m: True)
-def supreme_router(m):
+def public_router(m):
     uid = m.from_user.id
-    u = MI_CORE.get_u(uid)
-    text = m.text
+    txt = m.text
 
-    if "Ultra Code Lab" in text:
-        msg = bot.send_message(m.chat.id, "💻 **Enter System Requirements for Full Project Structure:**")
-        bot.register_next_step_handler(msg, process_zip_factory)
+    if "⚙️ Switch AI Model" in txt:
+        bot.send_message(m.chat.id, "🎛️ **Select AI Core Engine:**", reply_markup=ai_switch_menu())
 
-    elif "Luxury PDF Book" in text:
-        msg = bot.send_message(m.chat.id, "📕 **Enter Book Topic:** (Aap cover ke liye picture bhi bhej sakte hain!)")
-        bot.register_next_step_handler(msg, process_book_factory)
+    elif "📊 My Dashboard" in txt:
+        u_data = db.get_user(uid)
+        bot.reply_to(m, f"📊 **Your Stats:**\nName: {u_data[1]}\nActive AI: {u_data[2].upper()}\nTotal Queries: {u_data[4]}\nStatus: PRO User 💎")
 
-    elif "Global Research" in text:
-        msg = bot.send_message(m.chat.id, "🌐 **What topic should I scan globally?**")
-        bot.register_next_step_handler(msg, process_global_research)
+    elif "💻 Mega Code Lab" in txt:
+        msg = bot.send_message(m.chat.id, "💻 **Enter Full Project Details (Code will be deep and long):**")
+        bot.register_next_step_handler(msg, step_code)
 
-    elif "AI Control" in text:
-        bot.send_message(m.chat.id, "⚙️ **System Control Panel:**", reply_markup=ai_control_menu())
+    elif "📦 ZIP Project Builder" in txt:
+        msg = bot.send_message(m.chat.id, "📦 **Enter App Requirements to build a ZIP architecture:**")
+        bot.register_next_step_handler(msg, step_zip)
 
-    elif "Dashboard" in text:
-        stats = f"📊 **Muaaz Iqbal's AI Stats:**\nFiles in Repo: {len(u['repo'])}\nRequests: {u['stats']['books'] + u['stats']['codes']}\nEngine: {u['engine'].upper()}"
-        bot.reply_to(m, stats)
+    elif "📕 Color PDF Book" in txt:
+        msg = bot.send_message(m.chat.id, "📕 **Enter Book Topic:**\n*(Note: Agar aapne pehle photo bheji hai, wo cover ban jayegi!)*")
+        bot.register_next_step_handler(msg, step_pdf)
+
+    elif "🌐 Smart Google Sync" in txt:
+        msg = bot.send_message(m.chat.id, "🌐 **What do you want to deep search?**")
+        bot.register_next_step_handler(msg, step_search)
+
+    elif "🖼️ Web Art Gen" in txt or "🎬 Video Engine" in txt:
+        msg = bot.send_message(m.chat.id, "🎨/🎬 **Enter Prompt for Image/Video:**")
+        bot.register_next_step_handler(msg, step_media)
+
+    elif "📖 Story Teller" in txt:
+        msg = bot.send_message(m.chat.id, "📖 **Enter Story Topic:**")
+        bot.register_next_step_handler(msg, step_story)
 
     else:
-        # Standard Pro Chat
-        status_mid = bot.send_message(m.chat.id, "🧠 Analyzing Logic...").message_id
-        ans = call_supreme_ai(uid, text, "Full Knowledge Expert & Scientific Assistant")
-        bot.delete_message(m.chat.id, status_mid)
-        bot.reply_to(m, f"🔴 **MI AI:**\n\n{ans}", parse_mode="Markdown")
+        # Normal Deep Thinking Chat
+        mid = digital_progress(m.chat.id, "Deep AI Reasoning")
+        ans, node = mega_ai_brain(uid, txt)
+        bot.delete_message(m.chat.id, mid)
+        bot.reply_to(m, f"🔥 **MI AI**\n━━━━━━━━━━━━━━\n{ans}\n\n🤖 *Engine:* `{node}`", parse_mode="Markdown")
 
-# --- ⚡ STEP-ACTION LOGICS ---
+# --- ⚡ STEP FUNCTIONS (The Heavy Lifters) ---
 
-def process_zip_factory(m):
-    mid = bot.send_message(m.chat.id, "🚀 Initializing Core...").message_id
-    update_mi_progress(m.chat.id, mid, "Architecting File System", 30)
-    zip_buf = build_zip_repository(m.from_user.id, m.text)
-    update_mi_progress(m.chat.id, mid, "Compiling Code Structures", 70)
-    update_mi_progress(m.chat.id, mid, "Finalizing ZIP Repository", 95)
-    
-    zip_buf.name = f"{m.text[:15].replace(' ', '_')}_Project.zip"
+def step_code(m):
+    mid = digital_progress(m.chat.id, "Generating Deep Code")
+    ans, node = mega_ai_brain(m.from_user.id, f"Write a very long, highly structured, error-free code for: {m.text}. Add comments.", "Senior Programmer")
     bot.delete_message(m.chat.id, mid)
-    bot.send_document(m.chat.id, zip_buf, caption=f"📦 **Project ZIP Complete!**\nRequirements: {m.text}")
+    bot.reply_to(m, f"💻 **Code Lab Result:**\n\n{ans[:3900]}\n\n🤖 *Powered by {node}*")
 
-def process_book_factory(m):
-    topic = m.text
-    mid = bot.send_message(m.chat.id, "📚 Researching Content...").message_id
-    update_mi_progress(m.chat.id, mid, "Deep Scanning Topics", 40)
-    
-    # This checks if the user wants to send a cover image or just text
-    pdf_buf = build_luxury_book(m.from_user.id, topic)
-    update_mi_progress(m.chat.id, mid, "Styling Luxury Layout", 90)
-    
-    pdf_buf.name = f"{topic}.pdf"
+def step_zip(m):
+    mid = digital_progress(m.chat.id, "Architecting ZIP Folder")
+    zip_buf = zip_project_builder(m.from_user.id, m.text)
+    zip_buf.name = "MI_Project.zip"
     bot.delete_message(m.chat.id, mid)
-    bot.send_document(m.chat.id, pdf_buf, caption=f"📕 **Luxury Edition Book Ready!**\nTopic: {topic}")
+    bot.send_document(m.chat.id, zip_buf, caption=f"📦 **Complete Project Built!**\nTask: {m.text}")
 
-def process_global_research(m):
-    mid = bot.send_message(m.chat.id, "🌐 Global Scanning...").message_id
-    img_url = f"https://pollinations.ai/p/{urllib.parse.quote(m.text)}?width=800&height=400&nologo=true"
-    report = call_supreme_ai(m.from_user.id, f"Give deep research report on {m.text} with latest links and top articles.", "Global Researcher")
+def step_pdf(m):
+    mid = digital_progress(m.chat.id, "Designing Color PDF")
+    cover_img = user_sessions.get(m.from_user.id, {}).get("cover_img")
+    pdf_buf = build_color_pdf(m.from_user.id, m.text, cover_img)
+    pdf_buf.name = f"{m.text[:15]}.pdf"
     bot.delete_message(m.chat.id, mid)
-    bot.send_photo(m.chat.id, img_url, caption=f"🌐 **Global Report:**\n\n{report}\n\n🔗 [Deep Scan Link](https://www.google.com/search?q={urllib.parse.quote(m.text)})")
+    bot.send_document(m.chat.id, pdf_buf, caption=f"📕 **Beautiful Book Created!**\nTopic: {m.text}")
 
-# ================= 🚀 SUPREME BOOT =================
+def step_search(m):
+    mid = digital_progress(m.chat.id, "Google AI Sync")
+    report, img_url, node = ai_google_search(m.from_user.id, m.text)
+    bot.delete_message(m.chat.id, mid)
+    bot.send_photo(m.chat.id, img_url, caption=f"🌐 **Smart Search Report ({node}):**\n\n{report[:900]}...\n\n🔗 [View Full Google Results](https://www.google.com/search?q={urllib.parse.quote(m.text)})")
+
+def step_media(m):
+    p = urllib.parse.quote(m.text)
+    bot.send_photo(m.chat.id, f"https://image.pollinations.ai/prompt/{p}?nologo=true", caption=f"🎨 AI Generated: {m.text}")
+
+def step_story(m):
+    mid = digital_progress(m.chat.id, "Writing Story")
+    ans, _ = mega_ai_brain(m.from_user.id, f"Write a long, beautiful, engaging story about: {m.text}", "Expert Storyteller")
+    bot.delete_message(m.chat.id, mid)
+    bot.reply_to(m, f"📖 **MI AI Story:**\n\n{ans}")
+
+# ================= 🚀 SERVER BOOT =================
 if __name__ == "__main__":
-    print("💎 MI AI PRO SUPREME IS ONLINE")
+    print("========================================")
+    print("🔥 MI AI PUBLIC EDITION IS ONLINE 🔥")
+    print("👨‍💻 Architect: Muaaz Iqbal | Muslim Islam")
+    print("========================================")
     bot.infinity_polling(timeout=20)
