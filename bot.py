@@ -4,101 +4,98 @@ import firebase_admin
 from firebase_admin import credentials, db
 from telebot import types
 import time
-import os
 
-# --- Configurations ---
+# --- 1. Configurations ---
 BOT_TOKEN = "7942368781:AAGFDlmnBKVKulMR3AHDxLXIgHOgCXjB_Jc"
 GEMINI_API_KEY = "AIzaSyDswodCTMu6EpQLcM6BQhv83La0Zunh94I"
+DB_URL = "https://ramadan-2385b-default-rtdb.firebaseio.com"
 
-# Firebase Setup
-firebase_config = {
-    "apiKey": "AIzaSyBbnU8DkthpYQMHOLLyj6M0cc05qXfjMcw",
-    "authDomain": "ramadan-2385b.firebaseapp.com",
-    "databaseURL": "https://ramadan-2385b-default-rtdb.firebaseio.com",
-    "projectId": "ramadan-2385b",
-}
-
-# Initialize Firebase (Using a simple check to avoid re-initialization)
+# --- 2. Firebase Connection (No File Required Fix) ---
 if not firebase_admin._apps:
-    cred = credentials.Certificate(firebase_config) # Note: In production use a serviceAccountKey.json
-    firebase_admin.initialize_app(cred, {'databaseURL': firebase_config['databaseURL']})
+    # Firebase کو صرف ڈیٹا بیس یو آر ایل سے انیشیلائز کرنا
+    firebase_admin.initialize_app(options={'databaseURL': DB_URL})
 
 bot = telebot.TeleBot(BOT_TOKEN)
 genai.configure(api_key=GEMINI_API_KEY)
 
-# --- AI Logic ---
-def ask_gemini(prompt, model_name="gemini-1.5-flash"):
-    model = genai.GenerativeModel(model_name)
-    response = model.generate_content(prompt)
-    return response.text
+# --- 3. Smart AI Logic (Auto-Model Detection) ---
+def ask_ai(prompt, mode="fast"):
+    # خودکار ماڈل سلیکشن
+    if mode == "pro":
+        model_name = "gemini-1.5-pro" # بھاری کام کے لیے
+    elif mode == "search":
+        model_name = "gemini-1.5-flash" # سرچ اور تیز کام کے لیے
+        prompt = f"Search and provide detailed info: {prompt}"
+    else:
+        model_name = "gemini-1.5-flash"
 
-# --- Welcome & Data Collection ---
+    try:
+        model = genai.GenerativeModel(model_name)
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"Yar Maaz, Error aa raha hai: {str(e)}"
+
+# --- 4. User Onboarding (Tracking) ---
 @bot.message_handler(commands=['start'])
 def start(message):
-    user_id = str(message.from_user.id)
-    ref = db.reference(f'users/{user_id}')
-    user_data = ref.get()
-
-    if not user_data:
-        msg = bot.send_message(message.chat.id, "Welcome to MI AI! 🚀\nPlease enter your **Full Name** to register:")
-        bot.register_next_step_handler(msg, save_name)
+    uid = str(message.from_user.id)
+    user_ref = db.reference(f'users/{uid}')
+    
+    if not user_ref.get():
+        msg = bot.send_message(message.chat.id, "Welcome to **MI AI**! 🚀\n\nRegistration Required.\nPlease enter your **Full Name**:")
+        bot.register_next_step_handler(msg, process_name)
     else:
-        show_menu(message)
+        show_main_menu(message)
 
-def save_name(message):
-    user_id = str(message.from_user.id)
-    db.reference(f'users/{user_id}').update({'name': message.text})
-    msg = bot.send_message(message.chat.id, "Great! Now share your **Phone Number**:")
-    bot.register_next_step_handler(msg, save_phone)
+def process_name(message):
+    uid = str(message.from_user.id)
+    db.reference(f'users/{uid}').update({'name': message.text})
+    msg = bot.send_message(message.chat.id, "Now send your **Phone Number**:")
+    bot.register_next_step_handler(msg, process_phone)
 
-def save_phone(message):
-    user_id = str(message.from_user.id)
-    db.reference(f'users/{user_id}').update({'phone': message.text})
-    msg = bot.send_message(message.chat.id, "Lastly, enter your **Email Address**:")
-    bot.register_next_step_handler(msg, save_email)
+def process_phone(message):
+    uid = str(message.from_user.id)
+    db.reference(f'users/{uid}').update({'phone': message.text})
+    msg = bot.send_message(message.chat.id, "Lastly, your **Email Address**:")
+    bot.register_next_step_handler(msg, process_email)
 
-def save_email(message):
-    user_id = str(message.from_user.id)
-    db.reference(f'users/{user_id}').update({'email': message.text})
-    bot.send_message(message.chat.id, "✅ Registration Complete!")
-    show_menu(message)
+def process_email(message):
+    uid = str(message.from_user.id)
+    db.reference(f'users/{uid}').update({'email': message.text, 'mode': 'fast'})
+    bot.send_message(message.chat.id, "✅ Data Saved! You are now tracked.")
+    show_main_menu(message)
 
-# --- Main Menu ---
-def show_menu(message):
+# --- 5. Navigation & Modes ---
+def show_main_menu(message):
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    btn1 = types.KeyboardButton("🚀 Fast Thinking")
-    btn2 = types.KeyboardButton("🧠 Pro Thinking (Long)")
-    btn3 = types.KeyboardButton("🔍 Google Search AI")
-    markup.add(btn1, btn2, btn3)
-    bot.send_message(message.chat.id, "MI AI Terminal Active. Select your mode:", reply_markup=markup)
+    markup.add("🚀 Fast Mode", "🧠 Pro Thinking", "🔍 AI Search", "📊 My Data")
+    bot.send_message(message.chat.id, "MI AI ACTIVE. Select Mode:", reply_markup=markup)
 
-# --- Handling Messages ---
-@bot.message_handler(func=lambda message: True)
-def handle_all(message):
-    user_id = str(message.from_user.id)
+@bot.message_handler(func=lambda m: True)
+def handle_msg(message):
+    uid = str(message.from_user.id)
     text = message.text
+    user_ref = db.reference(f'users/{uid}')
 
-    if text == "🚀 Fast Thinking":
-        bot.reply_to(message, "Mode switched to **Fast Thinking**. Send your query!")
-        db.reference(f'users/{user_id}').update({'mode': 'fast'})
-    elif text == "🧠 Pro Thinking (Long)":
-        bot.reply_to(message, "Mode switched to **Pro Thinking**. Deep analysis enabled!")
-        db.reference(f'users/{user_id}').update({'mode': 'pro'})
-    elif text == "🔍 Google Search AI":
-        bot.reply_to(message, "Search Mode enabled. I will search the web for you!")
-        db.reference(f'users/{user_id}').update({'mode': 'search'})
+    if text == "🚀 Fast Mode":
+        user_ref.update({'mode': 'fast'})
+        bot.reply_to(message, "Switched to Fast Mode! ⚡")
+    elif text == "🧠 Pro Thinking":
+        user_ref.update({'mode': 'pro'})
+        bot.reply_to(message, "Switched to Pro Thinking (Deep Analysis)! 🧠")
+    elif text == "🔍 AI Search":
+        user_ref.update({'mode': 'search'})
+        bot.reply_to(message, "AI Search Mode Active! 🔍")
+    elif text == "📊 My Data":
+        data = user_ref.get()
+        bot.reply_to(message, f"👤 Name: {data['name']}\n📞 Phone: {data['phone']}\n📧 Email: {data['email']}")
     else:
-        # Process AI Response based on Mode
-        user_mode = db.reference(f'users/{user_id}/mode').get() or 'fast'
+        mode = user_ref.child('mode').get() or 'fast'
         bot.send_chat_action(message.chat.id, 'typing')
-        
-        if user_mode == 'pro':
-            response = ask_gemini(f"Deep Analysis required: {text}", "gemini-1.5-pro")
-        else:
-            response = ask_gemini(text, "gemini-1.5-flash")
-        
-        bot.reply_to(message, f"**MI AI Result:**\n\n{response}", parse_mode="Markdown")
+        result = ask_ai(text, mode)
+        bot.reply_to(message, result, parse_mode="Markdown")
 
-# --- Auto Restart Logic (Simulated for GitHub) ---
-print("MI AI is Running...")
+# --- 6. Stay Alive ---
+print("MI AI Running with Auto-Detection...")
 bot.infinity_polling()
