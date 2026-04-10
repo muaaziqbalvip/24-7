@@ -1,0 +1,26 @@
+name: MI AI Bot 24/7
+
+on:
+  schedule:
+    - cron: "0 */6 * * *" # ہر 6 گھنٹے بعد چلے گا
+  workflow_dispatch: # دستی طور پر چلانے کے لیے
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run MI AI Bot
+        run: python bot.py
+        env:
+          PYTHONUNBUFFERED: 1
