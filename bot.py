@@ -1,10 +1,9 @@
 import telebot
 import requests
 import os
-import json
 from telebot import types
 
-# ================= CONFIG =================
+# ================= MI AI CONFIG =================
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -12,50 +11,45 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# ================= LOCAL DATABASE =================
-DB_FILE = "users.json"
+# ================= MEMORY =================
+users = {}
 
-def load_db():
-    try:
-        with open(DB_FILE, "r") as f:
-            return json.load(f)
-    except:
-        return {}
-
-def save_db(data):
-    with open(DB_FILE, "w") as f:
-        json.dump(data, f, indent=2)
-
-db = load_db()
-
-# ================= USER REGISTRATION =================
-
-def get_user(uid):
-    if uid not in db:
-        db[uid] = {
-            "step": "name",
-            "name": "",
-            "phone": "",
-            "email": "",
-            "address": "",
+def user(uid):
+    if uid not in users:
+        users[uid] = {
             "mode": "gemini"
         }
-        save_db(db)
-    return db[uid]
+    return users[uid]
 
-# ================= AI PROMPTS =================
+# ================= PROMPTS =================
 
-def ai_prompt(text):
+def base_prompt(text):
     return f"""
-Tum MI AI Ultra Pro Max ho (Created by MUAAZ IQBAL).
+Tum MI AI ho (Created by MUAAZ IQBAL).
 
 RULES:
-- Long detailed answer
-- Urdu + English mix
+- Long detailed answer do
+- Urdu + English + Arabic style allowed
 - Deep explanation
 - Friendly tone
+- Step-by-step thinking
 
 User:
+{text}
+"""
+
+def story_prompt(text):
+    return f"""
+Tum MI AI Story Writer ho.
+
+RULES:
+- Cinematic story likho
+- Chapters use karo
+- Emotions + scenes detail me do
+- Urdu + English mix
+- Ending strong ho
+
+Story request:
 {text}
 """
 
@@ -64,7 +58,7 @@ User:
 def gemini(text):
     try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-        payload = {"contents": [{"parts": [{"text": ai_prompt(text)}]}]}
+        payload = {"contents": [{"parts": [{"text": base_prompt(text)}]}]}
         r = requests.post(url, json=payload, timeout=20)
         if r.status_code == 200:
             return r.json()['candidates'][0]['content']['parts'][0]['text']
@@ -79,7 +73,7 @@ def groq(text):
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
         payload = {
             "model": "llama3-70b-8192",
-            "messages": [{"role": "user", "content": ai_prompt(text)}]
+            "messages": [{"role": "user", "content": base_prompt(text)}]
         }
         r = requests.post(url, json=payload, headers=headers)
         if r.status_code == 200:
@@ -95,7 +89,7 @@ def openrouter(text):
         headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
         payload = {
             "model": "openai/gpt-3.5-turbo",
-            "messages": [{"role": "user", "content": ai_prompt(text)}]
+            "messages": [{"role": "user", "content": base_prompt(text)}]
         }
         r = requests.post(url, json=payload, headers=headers)
         if r.status_code == 200:
@@ -107,122 +101,134 @@ def openrouter(text):
 
 def smart_ai(text):
     for fn in [gemini, openrouter, groq]:
-        r = fn(text)
-        if r:
-            return r
+        res = fn(text)
+        if res:
+            return res
     return "⚠️ MI AI busy hai"
 
-# ================= MENU =================
+# ================= SEARCH =================
+
+def search(query):
+    try:
+        url = f"https://duckduckgo.com/html/?q={query}"
+        return requests.get(url).text[:1200]
+    except:
+        return "Search error"
+
+# ================= UI MENU =================
 
 def menu():
     kb = types.InlineKeyboardMarkup()
+
     kb.row(
-        types.InlineKeyboardButton("🤖 AI", callback_data="ai"),
+        types.InlineKeyboardButton("🤖 AI Chat", callback_data="ai"),
         types.InlineKeyboardButton("🌐 Search", callback_data="search")
     )
+
     kb.row(
-        types.InlineKeyboardButton("📖 Story", callback_data="story"),
-        types.InlineKeyboardButton("👤 Profile", callback_data="profile")
+        types.InlineKeyboardButton("📖 Story Mode", callback_data="story"),
+        types.InlineKeyboardButton("🧠 Deep Think", callback_data="deep")
     )
+
+    kb.row(
+        types.InlineKeyboardButton("⚙ AI Model", callback_data="model"),
+        types.InlineKeyboardButton("📊 Poll", callback_data="poll")
+    )
+
     return kb
 
 # ================= START =================
 
 @bot.message_handler(commands=['start'])
 def start(m):
-    uid = str(m.from_user.id)
-    u = get_user(uid)
-
     bot.send_message(
         m.chat.id,
-        "🤖 MI AI ULTRA PRO MAX\n\n👨‍💻 Created by MUAAZ IQBAL\n\nWelcome!\nFirst register yourself.",
+        "🤖 *MI AI ACTIVATED*\n\n👨‍💻 Created by MUAAZ IQBAL\n\nSelect option:",
+        parse_mode="Markdown",
         reply_markup=menu()
     )
 
-# ================= REGISTRATION SYSTEM =================
+# ================= CALLBACK =================
+
+@bot.callback_query_handler(func=lambda c: True)
+def cb(c):
+    uid = str(c.from_user.id)
+    u = user(uid)
+
+    if c.data == "ai":
+        bot.send_message(c.message.chat.id, "💬 Send your question")
+
+    if c.data == "search":
+        bot.send_message(c.message.chat.id, "🌐 Use /search query")
+
+    if c.data == "story":
+        bot.send_message(c.message.chat.id, "📖 Send story topic")
+
+    if c.data == "deep":
+        bot.send_message(c.message.chat.id, "🧠 Deep thinking ON")
+
+    if c.data == "model":
+        bot.send_message(c.message.chat.id, "⚙ Type: gemini / groq / openrouter")
+
+    if c.data == "poll":
+        bot.send_message(c.message.chat.id, "📊 Use /poll question")
+
+# ================= TEXT HANDLER =================
 
 @bot.message_handler(func=lambda m: True)
 def handle(m):
     uid = str(m.from_user.id)
-    u = get_user(uid)
+    u = user(uid)
     text = m.text
 
-    # ---------------- REGISTRATION FLOW ----------------
-    if u["step"] == "name":
-        u["name"] = text
-        u["step"] = "phone"
-        save_db(db)
-        bot.reply_to(m, "📱 Ab apna PHONE number bhejo")
+    # model switch
+    if text.lower() in ["gemini", "groq", "openrouter"]:
+        u["mode"] = text.lower()
+        bot.reply_to(m, f"⚙ Mode set: {text}")
         return
 
-    if u["step"] == "phone":
-        u["phone"] = text
-        u["step"] = "email"
-        save_db(db)
-        bot.reply_to(m, "📧 Ab apna EMAIL bhejo")
-        return
-
-    if u["step"] == "email":
-        u["email"] = text
-        u["step"] = "address"
-        save_db(db)
-        bot.reply_to(m, "🏠 Ab apna ADDRESS bhejo")
-        return
-
-    if u["step"] == "address":
-        u["address"] = text
-        u["step"] = "done"
-        save_db(db)
-        bot.reply_to(m, "✅ Registration complete!\nAb MI AI ready hai 🤖")
-        return
-
-    # ---------------- PROFILE ----------------
-    if text == "/profile":
-        bot.reply_to(m, f"""
-👤 PROFILE:
-
-Name: {u['name']}
-Phone: {u['phone']}
-Email: {u['email']}
-Address: {u['address']}
-""")
-        return
-
-    # ---------------- SEARCH ----------------
+    # search
     if text.startswith("/search"):
         q = text.replace("/search", "")
-        url = f"https://duckduckgo.com/html/?q={q}"
-        res = requests.get(url).text[:1200]
-        bot.reply_to(m, f"🌐 SEARCH RESULT:\n\n{res}")
+        bot.reply_to(m, f"🌐 SEARCH:\n\n{search(q)}")
         return
 
-    # ---------------- AI CHAT ----------------
-    bot.send_chat_action(m.chat.id, "typing")
-    reply = smart_ai(text)
+    # poll
+    if text.startswith("/poll"):
+        q = text.replace("/poll", "")
+        bot.send_poll(m.chat.id, q, ["Yes", "No", "Maybe"])
+        return
 
-    bot.reply_to(m, f"""
+    # STORY MODE trigger
+    if "story" in text.lower():
+        reply = smart_ai(story_prompt(text))
+    else:
+        reply = smart_ai(text)
+
+    final = f"""
 🤖 MI AI RESPONSE
 
 {reply}
 
 👨‍💻 By MUAAZ IQBAL
-""")
+"""
+    bot.reply_to(m, final, parse_mode="Markdown")
 
 # ================= MEDIA =================
 
 @bot.message_handler(content_types=['photo'])
 def photo(m):
-    bot.reply_to(m, "🖼 Image received (Vision upgrade needed)")
+    bot.reply_to(m, "🖼 MI AI received image (Vision upgrade needed for analysis)")
 
 @bot.message_handler(content_types=['video'])
 def video(m):
-    bot.reply_to(m, "🎥 Video received")
+    bot.reply_to(m, "🎥 Video received by MI AI")
 
 @bot.message_handler(content_types=['voice'])
 def voice(m):
-    bot.reply_to(m, "🎤 Voice received")
+    bot.reply_to(m, "🎤 Voice received (speech-to-text upgrade needed)")
 
 # ================= RUN =================
 
-print("🚀 MI AI ULTRA PRO MAX RUNNING...")
+print("🚀 MI AI FULL SYSTEM RUNNING...")
 bot.infinity_polling()
