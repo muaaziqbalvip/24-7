@@ -12,8 +12,8 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# ================= DATABASE =================
-DB_FILE = "mi_ai_users.json"
+# ================= LOCAL DATABASE =================
+DB_FILE = "users.json"
 
 def load_db():
     try:
@@ -28,7 +28,7 @@ def save_db(data):
 
 db = load_db()
 
-# ================= USER SYSTEM =================
+# ================= USER REGISTRATION =================
 
 def get_user(uid):
     if uid not in db:
@@ -38,41 +38,33 @@ def get_user(uid):
             "phone": "",
             "email": "",
             "address": "",
-            "mode": "gemini",
-            "history": []
+            "mode": "gemini"
         }
         save_db(db)
     return db[uid]
 
-def update(uid):
-    save_db(db)
-
-# ================= AI CORE =================
+# ================= AI PROMPTS =================
 
 def ai_prompt(text):
     return f"""
-Tum MI AI ho (Created by MUAAZ IQBAL).
+Tum MI AI Ultra Pro Max ho (Created by MUAAZ IQBAL).
 
 RULES:
 - Long detailed answer
-- Step-by-step explanation
 - Urdu + English mix
+- Deep explanation
 - Friendly tone
 
 User:
 {text}
 """
 
-# ================= GEMINI =================
+# ================= AI MODELS =================
 
 def gemini(text):
     try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-        payload = {
-            "contents": [{
-                "parts": [{"text": ai_prompt(text)}]
-            }]
-        }
+        payload = {"contents": [{"parts": [{"text": ai_prompt(text)}]}]}
         r = requests.post(url, json=payload, timeout=20)
         if r.status_code == 200:
             return r.json()['candidates'][0]['content']['parts'][0]['text']
@@ -80,7 +72,6 @@ def gemini(text):
         pass
     return None
 
-# ================= GROQ =================
 
 def groq(text):
     try:
@@ -97,7 +88,6 @@ def groq(text):
         pass
     return None
 
-# ================= OPENROUTER =================
 
 def openrouter(text):
     try:
@@ -114,57 +104,42 @@ def openrouter(text):
         pass
     return None
 
-# ================= SMART AI ROUTER =================
 
 def smart_ai(text):
     for fn in [gemini, openrouter, groq]:
-        res = fn(text)
-        if res:
-            return res
-    return "⚠️ MI AI busy hai, try again."
-
-# ================= SEARCH ENGINE =================
-
-def search(query):
-    try:
-        url = f"https://duckduckgo.com/html/?q={query}"
-        return requests.get(url).text[:1500]
-    except:
-        return "Search failed"
+        r = fn(text)
+        if r:
+            return r
+    return "⚠️ MI AI busy hai"
 
 # ================= MENU =================
 
 def menu():
     kb = types.InlineKeyboardMarkup()
-
     kb.row(
-        types.InlineKeyboardButton("🤖 AI Chat", callback_data="ai"),
+        types.InlineKeyboardButton("🤖 AI", callback_data="ai"),
         types.InlineKeyboardButton("🌐 Search", callback_data="search")
     )
-
     kb.row(
-        types.InlineKeyboardButton("📖 Story Mode", callback_data="story"),
-        types.InlineKeyboardButton("📊 Poll", callback_data="poll")
+        types.InlineKeyboardButton("📖 Story", callback_data="story"),
+        types.InlineKeyboardButton("👤 Profile", callback_data="profile")
     )
-
-    kb.row(
-        types.InlineKeyboardButton("👤 Profile", callback_data="profile"),
-        types.InlineKeyboardButton("⚙ Mode", callback_data="mode")
-    )
-
     return kb
 
 # ================= START =================
 
 @bot.message_handler(commands=['start'])
 def start(m):
+    uid = str(m.from_user.id)
+    u = get_user(uid)
+
     bot.send_message(
         m.chat.id,
-        "🤖 MI AI MASTER SYSTEM\n👨‍💻 Created by MUAAZ IQBAL\n\nStart registration...",
+        "🤖 MI AI ULTRA PRO MAX\n\n👨‍💻 Created by MUAAZ IQBAL\n\nWelcome!\nFirst register yourself.",
         reply_markup=menu()
     )
 
-# ================= REGISTRATION LOGIC =================
+# ================= REGISTRATION SYSTEM =================
 
 @bot.message_handler(func=lambda m: True)
 def handle(m):
@@ -176,35 +151,35 @@ def handle(m):
     if u["step"] == "name":
         u["name"] = text
         u["step"] = "phone"
-        update(uid)
-        bot.reply_to(m, "📱 Phone number send karo")
+        save_db(db)
+        bot.reply_to(m, "📱 Ab apna PHONE number bhejo")
         return
 
     if u["step"] == "phone":
         u["phone"] = text
         u["step"] = "email"
-        update(uid)
-        bot.reply_to(m, "📧 Email send karo")
+        save_db(db)
+        bot.reply_to(m, "📧 Ab apna EMAIL bhejo")
         return
 
     if u["step"] == "email":
         u["email"] = text
         u["step"] = "address"
-        update(uid)
-        bot.reply_to(m, "🏠 Address send karo")
+        save_db(db)
+        bot.reply_to(m, "🏠 Ab apna ADDRESS bhejo")
         return
 
     if u["step"] == "address":
         u["address"] = text
         u["step"] = "done"
-        update(uid)
-        bot.reply_to(m, "✅ Registration complete! Ab MI AI ready hai 🤖")
+        save_db(db)
+        bot.reply_to(m, "✅ Registration complete!\nAb MI AI ready hai 🤖")
         return
 
     # ---------------- PROFILE ----------------
     if text == "/profile":
         bot.reply_to(m, f"""
-👤 USER PROFILE
+👤 PROFILE:
 
 Name: {u['name']}
 Phone: {u['phone']}
@@ -216,23 +191,12 @@ Address: {u['address']}
     # ---------------- SEARCH ----------------
     if text.startswith("/search"):
         q = text.replace("/search", "")
-        bot.reply_to(m, f"🌐 SEARCH RESULT:\n\n{search(q)}")
+        url = f"https://duckduckgo.com/html/?q={q}"
+        res = requests.get(url).text[:1200]
+        bot.reply_to(m, f"🌐 SEARCH RESULT:\n\n{res}")
         return
 
-    # ---------------- POLL ----------------
-    if text.startswith("/poll"):
-        q = text.replace("/poll", "")
-        bot.send_poll(m.chat.id, q, ["Yes", "No", "Maybe"])
-        return
-
-    # ---------------- STORY MODE ----------------
-    if "story" in text.lower():
-        text = f"""
-Cinematic detailed story likho:
-{text}
-"""
-
-    # ---------------- AI RESPONSE ----------------
+    # ---------------- AI CHAT ----------------
     bot.send_chat_action(m.chat.id, "typing")
     reply = smart_ai(text)
 
@@ -241,14 +205,14 @@ Cinematic detailed story likho:
 
 {reply}
 
-👨‍💻 Created by MUAAZ IQBAL
+👨‍💻 By MUAAZ IQBAL
 """)
 
 # ================= MEDIA =================
 
 @bot.message_handler(content_types=['photo'])
 def photo(m):
-    bot.reply_to(m, "🖼 Image received (vision upgrade needed for analysis)")
+    bot.reply_to(m, "🖼 Image received (Vision upgrade needed)")
 
 @bot.message_handler(content_types=['video'])
 def video(m):
@@ -256,9 +220,9 @@ def video(m):
 
 @bot.message_handler(content_types=['voice'])
 def voice(m):
-    bot.reply_to(m, "🎤 Voice received (speech-to-text upgrade needed)")
+    bot.reply_to(m, "🎤 Voice received")
 
 # ================= RUN =================
 
-print("🚀 MI AI MASTER SYSTEM RUNNING...")
+print("🚀 MI AI ULTRA PRO MAX RUNNING...")
 bot.infinity_polling()
