@@ -1,59 +1,70 @@
-import telebot
-import os
+import telebot, threading, time
 from telebot import types
-from ai_engines import ask_all
-from utils import format_reply
-import threading
-from scheduler import run_scheduler
+from config import BOT_TOKEN, CHANNEL_ID
+from ai_router import ask_ai
+from memory import get_history, update_history
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = telebot.TeleBot(BOT_TOKEN)
-
-user_memory = {}
+user_mode = {}
 
 # ===== START =====
 @bot.message_handler(commands=['start'])
 def start(msg):
-    bot.reply_to(msg, "🤖 MI AI Activated\nAsk anything!")
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("🚀 Fast Mode","🧠 Pro Mode","🧹 Clear Memory")
 
-# ===== MAIN CHAT =====
-@bot.message_handler(func=lambda m: True)
-def handle(msg):
+    bot.reply_to(msg, "🤖 MI AI ULTRA ACTIVE", reply_markup=kb)
+
+# ===== MODE =====
+@bot.message_handler(func=lambda m: m.text in ["🚀 Fast Mode","🧠 Pro Mode","🧹 Clear Memory"])
+def modes(msg):
     uid = msg.chat.id
 
-    if uid not in user_memory:
-        user_memory[uid] = []
+    if msg.text == "🚀 Fast Mode":
+        user_mode[uid] = "fast"
+        bot.reply_to(msg,"⚡ Fast Mode ON")
 
-    history = user_memory[uid]
+    elif msg.text == "🧠 Pro Mode":
+        user_mode[uid] = "pro"
+        bot.reply_to(msg,"🧠 Pro Mode ON")
 
-    history.append({"role":"user","parts":[{"text":msg.text}]})
+    elif msg.text == "🧹 Clear Memory":
+        from memory import memory
+        memory[uid] = []
+        bot.reply_to(msg,"🧹 Memory Cleared")
 
-    bot.send_chat_action(uid, "typing")
+# ===== CHAT =====
+@bot.message_handler(func=lambda m: True)
+def chat(msg):
+    uid = msg.chat.id
 
-    reply, model = ask_all(history)
-
-    history.append({"role":"model","parts":[{"text":reply}]})
-
-    if len(history) > 10:
-        history = history[-10:]
-
-    user_memory[uid] = history
-
-    bot.reply_to(msg, format_reply(reply, model))
-
-# ===== GROUP AUTO REPLY =====
-@bot.message_handler(content_types=['text'])
-def group_reply(msg):
     if msg.chat.type in ["group","supergroup"]:
-        if bot.get_me().username in msg.text:
-            handle(msg)
+        if not msg.text.lower().startswith("mi"):
+            return
+
+    mode = user_mode.get(uid,"fast")
+    history = get_history(uid)
+
+    update_history(uid,"user",msg.text)
+
+    bot.send_chat_action(uid,"typing")
+
+    reply, model = ask_ai(history, mode)
+
+    update_history(uid,"model",reply)
+
+    bot.reply_to(msg,f"{reply}\n\n[{model}]")
 
 # ===== CHANNEL AUTO POST =====
-def start_scheduler():
-    channel_id = "@your_channel_username"
-    run_scheduler(bot, channel_id)
+def auto_post():
+    while True:
+        try:
+            bot.send_message(CHANNEL_ID,"🔥 MI AI Auto Post Running")
+        except:
+            pass
+        time.sleep(300)
 
-threading.Thread(target=start_scheduler).start()
+threading.Thread(target=auto_post).start()
 
-print("🚀 MI AI LIVE")
+print("🚀 MI AI ULTRA LIVE")
 bot.infinity_polling()
