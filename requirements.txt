@@ -3,4 +3,3 @@ requests==2.31.0
 fpdf==1.7.2
 duckduckgo-search==4.4.3
 pillow==10.2.0
-sqlite3
