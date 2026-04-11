@@ -1,39 +1,43 @@
 name: MI TITAN V22 ETERNAL RUNNER
 
-# Ye bot kab chalega?
+# Ye bot kab trigger hoga
 on:
   push:
-    branches: [ main ]  # Jab aap code push karenge
-  pull_request:
-    branches: [ main ]
+    branches: [ main ]  # Code push hone par start hoga
+  workflow_dispatch:      # Manual button se bhi start kar sakte hain
   schedule:
-    - cron: '0 */6 * * *' # Har 6 ghante baad auto-restart (GitHub Actions ki limit manage karne ke liye)
-  workflow_dispatch:      # Aap manual bhi button daba kar start kar sakte hain
+    - cron: '0 */6 * * *' # Har 6 ghante baad auto-refresh (GitHub rules ke liye)
 
 jobs:
-  build:
+  titan-runtime:
     runs-on: ubuntu-latest
+    
+    # Bot ko lagatar chalne ki permission dena
+    permissions:
+      contents: write
 
     steps:
-      - name: 📥 Checkout Repository
+      - name: 📥 Repository Checkout
         uses: actions/checkout@v4
 
-      - name: 🐍 Setup Python 3.10
+      - name: 🐍 Python Environment Setup
         uses: actions/set-up-python@v5
         with:
           python-version: '3.10'
-          cache: 'pip' # Takay bar bar install karne mein time zaya na ho
+          cache: 'pip'
 
-      - name: 📦 Install Dependencies
+      - name: 📦 Dependencies Install
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: 🚀 Run MI TITAN PRO V22
+      - name: 🚀 Start MI TITAN PRO V22
         env:
-          # Ye variables GitHub Settings > Secrets se uthaye jayenge
+          # In ko aapne GitHub Repo > Settings > Secrets mein lazmi dalna hai
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: python bot.py
+        run: |
+          # Bot ko background mein nahi, seedha run karenge taake GitHub logs dikhaye
+          python bot.py
