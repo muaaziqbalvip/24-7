@@ -1,34 +1,39 @@
-name: MI AI Bot 24/7
+name: MI TITAN V22 ETERNAL RUNNER
 
+# Ye bot kab chalega?
 on:
-  schedule:
-    - cron: '0 */6 * * *' # Har 4 ghante baad auto-restart (24/7 continuity)
   push:
-  workflow_dispatch:
+    branches: [ main ]  # Jab aap code push karenge
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 */6 * * *' # Har 6 ghante baad auto-restart (GitHub Actions ki limit manage karne ke liye)
+  workflow_dispatch:      # Aap manual bhi button daba kar start kar sakte hain
 
 jobs:
-  run-bot:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout Code
-        uses: actions/checkout@v3
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: 🐍 Setup Python
-        uses: actions/setup-python@v4
+      - name: 🐍 Setup Python 3.10
+        uses: actions/set-up-python@v5
         with:
-          python-version: "3.10"
+          python-version: '3.10'
+          cache: 'pip' # Takay bar bar install karne mein time zaya na ho
 
       - name: 📦 Install Dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: 🚀 Run MI AI Bot
+      - name: 🚀 Run MI TITAN PRO V22
         env:
+          # Ye variables GitHub Settings > Secrets se uthaye jayenge
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: python bot.py
