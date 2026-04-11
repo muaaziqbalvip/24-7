@@ -1,65 +1,31 @@
-name: MiTV_YouTube_24-7_Multi_Stream
+name: MI AI ULTRA
 
 on:
-  schedule:
-    - cron: '55 */5 * * *' # Har 5 ghante 55 minute baad auto-restart
-  workflow_dispatch:      # No inputs, direct start
-
-permissions:
-  contents: write
-  actions: write
+  push:
+  workflow_dispatch:
 
 jobs:
-  mitv_broadcast:
+  run:
     runs-on: ubuntu-latest
+
     steps:
-      - name: 1. System Core & MiTV Setup
-        run: |
-          echo "==================================================="
-          echo "      MUSLIM ISLAM - MiTV MULTI-STREAM OS         "
-          echo "==================================================="
-          sudo apt-get update -y
-          sudo apt-get install -y ffmpeg wget curl
-          
-          # 1000+ Lines Diagnostic Compliance
-          for i in {1..500}; do echo "MiTV System Scan Line $i: Core Module Active"; done
+      - uses: actions/checkout@v3
 
-      - name: 2. Checkout Repository
-        uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
 
-      - name: 3. Fetch Playlist and Execute Smooth Stream
+      - run: pip install -r requirements.txt
+
+      - name: Run Bot Loop
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          echo "Fetching Video Link from playlist.m3u..."
-          # Playlist ki pehli line se link uthana (Aapke logic ke mutabiq)
-          VIDEO_URL=$(grep -v '^#' playlist.m3u | grep -v '^$' | head -n 1)
-          echo "Target Video: $VIDEO_URL"
-          
-          # Downloading video to local storage for smooth looping (Just like your old YML)
-          wget -O mitv_video.mp4 "$VIDEO_URL"
-          
-          echo "Starting Triple-Stream Engine with Auto-Recovery..."
-          
-          # EXACT SAME LOGIC: 'until' loop for stability + 'stream_loop -1' for smoothness
-          # Teenon YouTube keys yahan 'tee' muxer ke zarye connect hain
-          until ffmpeg -re -stream_loop -1 -i mitv_video.mp4 \
-            -vcodec libx264 -preset veryfast -tune zerolatency \
-            -b:v 3000k -maxrate 3500k -bufsize 7000k \
-            -pix_fmt yuv420p -g 60 -r 30 \
-            -c:a aac -b:a 128k -ar 44100 \
-            -f tee -map 0:v -map 0:a \
-            "[f=flv]rtmp://a.rtmp.youtube.com/live2/buhp-wyep-qsw6-w1d1-fvuh|[f=flv]rtmp://a.rtmp.youtube.com/live2/6gck-2x7m-62uu-j1wd-b4x3|[f=flv]rtmp://a.rtmp.youtube.com/live2/vckh-qm35-j90w-r3bz-9jza"; do
-            echo "Stream Glitch Detected. Re-syncing MiTV Engine in 5 seconds..."
+          while true
+          do
+            python bot.py
             sleep 5
           done
-
-      - name: 4. 24/7 Continuity & Log Padding
-        if: always()
-        run: |
-          # 1000+ Lines Padding Completion
-          for i in {501..1000}; do echo "Diagnostic Log Line $i: MiTV Continuity Verified"; done
-          
-          echo "Triggering Next Cycle (24/7 Active)..."
-          curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          -H "Accept: application/vnd.github.v3+json" \
-          https://api.github.com/repos/${{ github.repository }}/actions/workflows/mitv_final.yml/dispatches \
-          -d '{"ref":"main"}'
