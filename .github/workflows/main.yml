@@ -1,4 +1,4 @@
-name: MI AI Bot Runner
+name: MI AI 24/7 Runner
 
 on:
   push:
@@ -9,25 +9,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout Repository
+      # 📥 Repo clone
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: 🐍 Setup Python
+      # 🐍 Python setup
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
-      - name: 📦 Install Dependencies
+      # 📦 Install dependencies
+      - name: Install Requirements
         run: |
-          pip install --upgrade pip
-          pip install pyTelegramBotAPI requests
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: 🚀 Run MI AI Bot
+      # 🚀 Run Bot (Auto Restart Loop)
+      - name: Run MI AI Bot
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          echo "🤖 MI AI Bot Started..."
-          python bot.py
+          echo "🤖 MI AI Bot Starting..."
+          while true
+          do
+            python bot.py
+            echo "⚠️ Bot crashed. Restarting in 5 seconds..."
+            sleep 5
+          done
