@@ -1,6 +1,8 @@
 name: MI AI Bot 24/7
 
 on:
+  schedule:
+    - cron: '0 */4 * * *' # Har 4 ghante baad auto-restart (24/7 continuity)
   push:
   workflow_dispatch:
 
