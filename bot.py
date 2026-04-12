@@ -528,88 +528,43 @@ def create_ultimate_book(uid, topic, chat_id, front_img=None, back_img=None):
 # 🎨  SECTION 4 : UI — KEYBOARDS, MENUS & SIDE PANEL
 # ══════════════════════════════════════════════════════════════════════════════════
 
-def get_main_keyboard(uid: int) -> types.InlineKeyboardMarkup:
-    """Main control panel inline keyboard — the Side Menu Bar."""
+from mi_ui import get_main_keyboard, get_engine_keyboard, BANNER_URL, BOT_NAME, DEVELOPER
+
+@bot.message_handler(commands=['start', 'menu'])
+def send_welcome_menu(m):
+    chat_id = m.chat.id
+    uid = m.from_user.id
+    
+    # 1. Typing Action (Uper typing... likha ayega)
+    bot.send_chat_action(chat_id, 'typing')
+    
+    # 2. Sync User
+    db.sync_user(uid, m.from_user.first_name, m.from_user.username or "")
     u = db.get_user(uid)
-    engine  = u.get("engine",     "auto")
-    mode    = u.get("mode",       "chat")
-    deep    = u.get("deep_think", 0)
-    role    = u.get("role",       "user")
+    role = u.get("role", "user")
 
-    kb = types.InlineKeyboardMarkup(row_width=2)
-
-    # Row 1 — Quick Actions
-    kb.add(
-        types.InlineKeyboardButton("🧠 Ask AI",        callback_data="ask_ai"),
-        types.InlineKeyboardButton("🔍 Web Search",    callback_data="mode_search"),
+    # 3. Dynamic Banner (Har baar thoda change)
+    current_banner = f"{BANNER_URL}&seed={random.randint(1,1000)}"
+    
+    # 4. Professional Text
+    menu_text = (
+        f"🚀 **{BOT_NAME} | NEURAL INTERFACE**\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"Welcome, **{m.from_user.first_name}**!\n\n"
+        f"👤 **Developer:** `{DEVELOPER}`\n"
+        f"🧠 **System:** AI Hybrid Engine\n"
+        f"📡 **Status:** Fully Operational\n\n"
+        f"✨ *Niche diye gaye buttons se control karein:* "
     )
-    # Row 2 — Engine Selection
-    kb.add(
-        types.InlineKeyboardButton("⚙️ Change Engine", callback_data="menu_engines"),
-        types.InlineKeyboardButton("📊 Dashboard",     callback_data="view_dashboard"),
+
+    # 5. Send Photo with Menu
+    bot.send_photo(
+        chat_id,
+        current_banner,
+        caption=menu_text,
+        reply_markup=get_main_keyboard(uid, role, ADMIN_ID, db),
+        parse_mode="Markdown"
     )
-    # Row 3 — Mode Selection
-    kb.add(
-        types.InlineKeyboardButton("💬 Chat Mode",     callback_data="set_mode_chat"),
-        types.InlineKeyboardButton("📚 Study Mode",    callback_data="set_mode_study"),
-    )
-    # Row 4 — Advanced
-    deep_label = "🔵 Deep Think: ON" if deep else "⚪ Deep Think: OFF"
-    kb.add(
-        types.InlineKeyboardButton(deep_label,          callback_data="toggle_deep"),
-        types.InlineKeyboardButton("🗑️ Clear Memory",   callback_data="clear_memory"),
-    )
-    # Row 5 — Info & Profile
-    kb.add(
-    types.InlineKeyboardButton("IMG GENRATE 🖼️",    callback_data="gen"),
-        types.InlineKeyboardButton("👤 My Profile",    callback_data="my_profile"),
-        types.InlineKeyboardButton("ℹ️ About Bot",     callback_data="about_bot"),
-    )
-    # Row 6 — Admin (only for admin)
-    if role == "admin" or uid == ADMIN_ID:
-        kb.add(
-            types.InlineKeyboardButton("🛡️ Admin Panel", callback_data="admin_panel"),
-        )
-
-    return kb
-
-
-def get_engine_keyboard(uid: int) -> types.InlineKeyboardMarkup:
-    """Engine selection panel."""
-    u = db.get_user(uid)
-    current = u.get("engine", "auto")
-
-    def mark(e):
-        return f"✅ {e.upper()}" if current == e else e.upper()
-
-    kb = types.InlineKeyboardMarkup(row_width=1)
-    kb.add(
-        types.InlineKeyboardButton(f"🤖 {mark('auto')} (Recommended)",   callback_data="set_eng_auto"),
-        types.InlineKeyboardButton(f"💎 {mark('gemini')} 1.5 Flash",     callback_data="set_eng_gemini"),
-        types.InlineKeyboardButton(f"⚡ {mark('groq')} LLaMA-3.3-70b",  callback_data="set_eng_groq"),
-        types.InlineKeyboardButton(f"🌐 {mark('openrouter')} Mistral",   callback_data="set_eng_openrouter"),
-        types.InlineKeyboardButton("🔙 Back to Menu",                     callback_data="go_home"),
-    )
-    return kb
-
-
-def get_mode_keyboard() -> types.InlineKeyboardMarkup:
-    kb = types.InlineKeyboardMarkup(row_width=2)
-    kb.add(
-        types.InlineKeyboardButton("💬 General Chat",    callback_data="set_mode_chat"),
-        types.InlineKeyboardButton("📚 Study Assistant", callback_data="set_mode_study"),
-        types.InlineKeyboardButton("🔍 Web Search",      callback_data="set_mode_search"),
-        types.InlineKeyboardButton("🎨 Creative Mode",   callback_data="set_mode_creative"),
-        types.InlineKeyboardButton("💻 Code Expert",     callback_data="set_mode_code"),
-        types.InlineKeyboardButton("🔙 Back",            callback_data="go_home"),
-    )
-    return kb
-
-
-def get_back_keyboard() -> types.InlineKeyboardMarkup:
-    kb = types.InlineKeyboardMarkup()
-    kb.add(types.InlineKeyboardButton("🏠 Main Menu", callback_data="go_home"))
-    return kb
 
 
 # ══════════════════════════════════════════════════════════════════════════════════
