@@ -1,55 +1,63 @@
 from telebot import types
 import random
 
-# --- MI AI BRANDING & CONFIG ---
+# --- BRANDING SETTINGS ---
 BOT_NAME = "MI AI"
 DEVELOPER = "Muaaz Iqbal"
-# Aapka Diya Hua Image Link
 BANNER_URL = "https://i.ibb.co/992tM2jb/file-0000000090007208b1864eebb1423b3e.png"
 
 def get_main_keyboard(uid, role, ADMIN_ID, db):
-    """MI AI Neural Interface - Crafted by Muaaz Iqbal"""
+    """MI AI Neural Control Panel — Styled by Muaaz Iqbal"""
     u = db.get_user(uid)
     deep = u.get("deep_think", 0)
 
     kb = types.InlineKeyboardMarkup(row_width=2)
 
-    # Section 1: Core Intelligence
+    # Row 1 — Primary Core
     kb.add(
         types.InlineKeyboardButton("🧠 Neural Chat",    callback_data="ask_ai"),
-        types.InlineKeyboardButton("🔍 Web Vision",    callback_data="mode_search"),
+        types.InlineKeyboardButton("🔍 Web Search",    callback_data="mode_search"),
     )
-    
-    # Section 2: Tools & Analytics
+    # Row 2 — System Settings
     kb.add(
-        types.InlineKeyboardButton("⚡ Engine Hub",    callback_data="menu_engines"),
-        types.InlineKeyboardButton("📊 Analytics",      callback_data="view_dashboard"),
+        types.InlineKeyboardButton("⚙️ Engine Hub",    callback_data="menu_engines"),
+        types.InlineKeyboardButton("📊 Dashboard",      callback_data="view_dashboard"),
     )
-    
-    # Section 3: Modes
+    # Row 3 — Interaction Modes
     kb.add(
-        types.InlineKeyboardButton("💬 Conversation",  callback_data="set_mode_chat"),
-        types.InlineKeyboardButton("📚 Study Pro",     callback_data="set_mode_study"),
+        types.InlineKeyboardButton("💬 Chat Mode",     callback_data="set_mode_chat"),
+        types.InlineKeyboardButton("📚 Study Mode",    callback_data="set_mode_study"),
     )
-    
-    # Section 4: Creativity (IMG GENERATE)
+    # Row 4 — Creative & Memory
     deep_status = "🔵 ON" if deep else "⚪ OFF"
     kb.add(
         types.InlineKeyboardButton("🎨 IMG GENERATE",  callback_data="gen"),
-        types.InlineKeyboardButton(f"🧠 Deep Think: {deep_status}", callback_data="toggle_deep"),
+        types.InlineKeyboardButton(f"🧠 Deep: {deep_status}", callback_data="toggle_deep"),
     )
-    
-    # Section 5: Memory & Profile
+    # Row 5 — User & System
     kb.add(
-        types.InlineKeyboardButton("🗑️ Clear Brain",   callback_data="clear_memory"),
+        types.InlineKeyboardButton("🗑️ Clear Memory",   callback_data="clear_memory"),
         types.InlineKeyboardButton("👤 My Profile",    callback_data="my_profile"),
     )
-    
-    # Section 6: About & Identity
+    # Row 6 — Info
     kb.add(types.InlineKeyboardButton("ℹ️ About MI AI", callback_data="about_bot"))
     
-    # Admin Section
+    # Row 7 — Admin
     if role == "admin" or uid == ADMIN_ID:
-        kb.add(types.InlineKeyboardButton("🛡️ SYSTEM ADMIN PANEL", callback_data="admin_panel"))
+        kb.add(types.InlineKeyboardButton("🛡️ ADMIN PANEL", callback_data="admin_panel"))
 
+    return kb
+
+def get_engine_keyboard(current_engine):
+    """Engine selection panel."""
+    def mark(e):
+        return f"✅ {e.upper()}" if current_engine == e else e.upper()
+
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    kb.add(
+        types.InlineKeyboardButton(f"🤖 {mark('auto')} (Recommended)",   callback_data="set_eng_auto"),
+        types.InlineKeyboardButton(f"💎 {mark('gemini')} 1.5 Flash",     callback_data="set_eng_gemini"),
+        types.InlineKeyboardButton(f"⚡ {mark('groq')} LLaMA-3.3",      callback_data="set_eng_groq"),
+        types.InlineKeyboardButton("🔙 Back to Menu",                     callback_data="go_home"),
+    )
     return kb
