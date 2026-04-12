@@ -21,6 +21,7 @@ import logging
 import random
 import re
 import io
+from titan_ascii import create_ascii_art
 from datetime import datetime
 from duckduckgo_search import DDGS
 
@@ -1079,6 +1080,42 @@ def cmd_engine(m):
         reply_markup=get_engine_keyboard(uid),
     )
 user_data = {} # ٹارگٹ ٹاپک اور امیجز محفوظ کرنے کے لیے
+# ─── ASCII ART COMMAND ────────────────────────────────────────────────────────
+@bot.message_handler(commands=["ascii"])
+def cmd_ascii(m):
+    uid = m.from_user.id
+    query = " ".join(m.text.split()[1:]).strip()
+
+    if not query:
+        bot.send_message(m.chat.id, "❌ **Topic لکھیں!**\nمثال: `/ascii A futuristic city`", parse_mode="Markdown")
+        return
+
+    db.sync_user(uid, m.from_user.first_name, m.from_user.username or "")
+    
+    # Start Animation
+    mid = bot.send_message(m.chat.id, "🛰️ **TITAN NEURAL PRESS ACTIVATED!**\nٹیکسٹ آرٹ کی تیاری شروع ہو رہی ہے...", parse_mode="Markdown").message_id
+
+    try:
+        # ٹیکسٹ آرٹ بنانا
+        ascii_art = create_ascii_art(query, m.chat.id)
+        
+        # ٹیلی گرام کے مارک ڈاؤن میں اسپیشل کریکٹرز کو ہینڈل کرنا
+        # ASCII آرٹ کو کوڈ بلاک (```) میں رکھنا ضروری ہے تاکہ الائنمنٹ خراب نہ ہو
+        safe_art = f"```\n{ascii_art}\n```"
+        
+        # اگر ٹیکسٹ بہت لمبا ہے، تو اسے پارٹس میں بھیجیں
+        if len(safe_art) > 4000:
+            for i in range(0, len(safe_art), 4000):
+                part = safe_art[i : i + 4000]
+                bot.send_message(m.chat.id, part, parse_mode="Markdown")
+        else:
+            bot.send_message(m.chat.id, safe_art, parse_mode="Markdown")
+        
+        bot.delete_message(m.chat.id, mid)
+        
+    except Exception as e:
+        logger.error(f"ASCII Art Error: {e}")
+        bot.send_message(m.chat.id, f"❌ **Error:** ASCII Art process failed or too complex.", parse_mode="Markdown")
 
 @bot.message_handler(commands=["makebook"])
 def start_book(m):
