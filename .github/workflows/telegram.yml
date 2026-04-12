@@ -1,6 +1,8 @@
 name: MI AI ULTRA
 
 on:
+  schedule:
+    - cron: "0 */6 * * *"
   push:
   workflow_dispatch:
 
