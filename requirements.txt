@@ -8,3 +8,9 @@ firebase-admin
 beautifulsoup4
 googlesearch-python
 ascii-magic
+google-generativeai
+pillow
+python-dotenv
+gTTS
+pydub
+SpeechRecognition
