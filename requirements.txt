@@ -7,3 +7,4 @@ duckduckgo-search
 firebase-admin
 beautifulsoup4
 googlesearch-python
+ascii-magic
