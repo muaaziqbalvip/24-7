@@ -1122,50 +1122,41 @@ def cmd_ascii(m):
 session = requests.Session()
 
 
+from img import generate_titan_image
+
 @bot.message_handler(commands=["gen"])
 def ask_for_img(m):
-    # یوزر سے پہلا سوال
-    msg = bot.send_message(m.chat.id, "🎨 **آپ کو کس بارے میں تصویر چاہیے؟**\n(تفصیل لکھیں، میں اسے خود بہتر بنا لوں گا)")
+    msg = bot.send_message(m.chat.id, "🎨 **Aapko kis bare mein image chahiye?**\n(Topic likhein...)")
     bot.register_next_step_handler(msg, process_img_request)
 
 def process_img_request(m):
     user_prompt = m.text
     chat_id = m.chat.id
     
-    if not user_prompt or user_prompt.startswith('/'):
-        bot.send_message(chat_id, "❌ غلط ان پٹ۔ دوبارہ کوشش کریں۔")
-        return
+    if not user_prompt or user_prompt.startswith('/'): return
 
-    # 1. Progress Status
-    progress_msg = bot.send_message(chat_id, "🛰️ **TITAN AI: Analyzing nodes...**")
+    # Direct Processing Message
+    progress_msg = bot.send_message(chat_id, "⚡ **TITAN AI: Generating your Art...**")
     
-    # 2. Logic Check (Short Prompt Logic)
-    # ہم AI کو کہہ سکتے ہیں کہ وہ اسے تھوڑا بہتر کرے یا ڈائریکٹ استعمال کرے
-    final_prompt = f"{user_prompt}, high resolution, 8k, cinematic lighting"
+    # Prompt ko short aur powerful banana
+    final_prompt = f"{user_prompt}, cinematic, 4k"
     
-    # 3. Call our img.py engine
-    bot.edit_message_text("⚡ **TITAN AI: Models checking (Flux, Turbo, Aesthetic)...**", chat_id, progress_msg.message_id)
-    
+    # Call Fast Engine
     file_path, engine = generate_titan_image(final_prompt)
     
     if file_path:
-        bot.edit_message_text(f"🚀 **Uploading using {engine} node...**", chat_id, progress_msg.message_id)
-        
+        # Photo seedhi bhejein, zyada messages edit na karein (Isse speed badhti hai)
         with open(file_path, "rb") as photo:
             bot.send_photo(
                 chat_id, 
                 photo, 
-                caption=f"✨ **TITAN AI ART**\n🧠 **Engine:** {engine}\n📝 **Topic:** {user_prompt}"
+                caption=f"✨ **TITAN AI ART**\n🧠 **Node:** {engine}\n📝 **Topic:** {user_prompt}"
             )
         
-        # Cleanup
         bot.delete_message(chat_id, progress_msg.message_id)
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        if os.path.exists(file_path): os.remove(file_path)
     else:
-        bot.edit_message_text("❌ **معذرت!** تمام ماڈلز اس وقت مصروف ہیں۔", chat_id, progress_msg.message_id)
-
-
+        bot.edit_message_text("❌ **Server Busy!** Dobara koshish karein.", chat_id, progress_msg.message_id)
 @bot.message_handler(commands=["makebook"])
 def start_book(m):
     msg = bot.send_message(m.chat.id, "📖 **Book کا ٹاپک لکھیں:**")
