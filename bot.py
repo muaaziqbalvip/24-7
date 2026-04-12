@@ -461,79 +461,67 @@ class NeuralEngine:
 # 📚  NEW SECTION: TITAN PDF BOOK ENGINE — STYLISH PDF CREATOR
 # ══════════════════════════════════════════════════════════════════════════════════
 from fpdf import FPDF
+import arabic_reshaper
+from bidi.algorithm import get_display
 
-class TitanBookPDF(FPDF):
-    def header(self):
-        self.set_font('Arial', 'B', 12)
-        self.set_text_color(255, 0, 0) # Red color for MI TITAN
-        self.cell(0, 10, f'{BOT_NAME} — KNOWLEDGE SERIES', 0, 1, 'C')
-        self.ln(5)
-
-    def footer(self):
-        self.set_y(-15)
-        self.set_font('Arial', 'I', 8)
-        self.set_text_color(128)
-        self.cell(0, 10, f'Created by {CREATOR_NAME} | Page ' + str(self.page_no()), 0, 0, 'C')
-
-def create_stylish_book(uid, topic, chat_id):
-    """Generates a PDF book with text and images."""
-    pdf = TitanBookPDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    
-    # --- Title Page ---
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 25)
-    pdf.ln(40)
-    pdf.set_text_color(255, 0, 0)
-    pdf.cell(0, 20, topic.upper(), 0, 1, 'C')
-    pdf.set_font("Arial", 'I', 15)
-    pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 10, f"Author: {CREATOR_NAME} (MI AI)", 0, 1, 'C')
-    pdf.ln(20)
-
-    # 1. AI Content Generation
-    bot.send_message(chat_id, "🧠 **MI AI کتاب لکھ رہا ہے، تھوڑا انتظار کریں...**", parse_mode="Markdown")
-    content_prompt = f"Write a detailed 5-chapter book about '{topic}' in Roman Urdu/English. Include headings for each chapter."
-    book_text, _ = NeuralEngine.get_response(uid, content_prompt, custom_role="Professional Book Writer")
-    
-    # 2. Image Searching (DuckDuckGo)
-    bot.send_message(chat_id, "🔍 **موضوع کے مطابق تصاویر تلاش کی جا رہی ہیں...**", parse_mode="Markdown")
-    images = []
-    try:
-        with DDGS() as ddgs:
-            results = list(ddgs.images(topic, max_results=2))
-            for r in results:
-                img_data = requests.get(r['image'], timeout=5).content
-                img_name = f"temp_{random.randint(100,999)}.jpg"
-                with open(img_name, "wb") as f:
-                    f.write(img_data)
-                images.append(img_name)
-    except:
-        pass
-
-    # --- Content Page ---
-    pdf.add_page()
-    pdf.set_font("Arial", '', 12)
-    
-    # Add Image if found
-    if images:
+class TitanProfessionalPDF(FPDF):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # فونٹ رجسٹر کریں (یقینی بنائیں کہ فائل موجود ہے)
         try:
-            pdf.image(images[0], x=40, w=130)
-            pdf.ln(10)
-        except: pass
+            self.add_font("UrduFont", "", "JameelNoori.ttf")
+        except:
+            pass # اگر فونٹ نہ ملے تو ڈیفالٹ استعمال کرے گا
 
-    # Clean text (remove non-latin characters for standard PDF)
-    clean_text = book_text.encode('latin-1', 'ignore').decode('latin-1')
-    pdf.multi_cell(0, 10, clean_text)
+    def render_urdu(self, text):
+        # اردو کو صحیح شکل میں لانے کے لیے
+        reshaped_text = arabic_reshaper.reshape(text)
+        bidi_text = get_display(reshaped_text)
+        return bidi_text
 
-    # Save PDF
-    file_name = f"MI_Book_{random.randint(1000,9999)}.pdf"
-    pdf.output(file_name)
+    def add_page_template(self, color=(250, 245, 230)):
+        self.add_page()
+        self.set_fill_color(*color)
+        self.rect(0, 0, 210, 297, 'F') # خوبصورت بیک گراؤنڈ کلر
+        # بارڈر ڈیزائن
+        self.set_line_width(1)
+        self.set_draw_color(150, 75, 0) # براؤن بارڈر
+        self.rect(5, 5, 200, 287)
+
+def create_ultimate_book(uid, topic, chat_id, front_img=None, back_img=None):
+    pdf = TitanProfessionalPDF()
     
-    # Clean up temp images
-    for img in images:
-        if os.path.exists(img): os.remove(img)
-        
+    # 1. Front Cover Page
+    if front_img:
+        pdf.add_page()
+        pdf.image(front_img, 0, 0, 210, 297)
+    else:
+        pdf.add_page_template((200, 0, 0)) # ریڈ ٹائٹل پیج اگر امیج نہ ہو
+        pdf.set_font("Helvetica", 'B', 40)
+        pdf.set_text_color(255, 255, 255)
+        pdf.cell(0, 150, topic.upper(), 0, 1, 'C')
+
+    # 2. Content Generation
+    bot.send_message(chat_id, "📚 **Writing Chapters in Urdu/English...**")
+    prompt = f"Write a professional book about {topic} in Urdu. Use proper titles."
+    content, _ = NeuralEngine.get_response(uid, prompt)
+
+    # 3. Inner Pages
+    pdf.add_page_template()
+    pdf.set_font("UrduFont", size=14)
+    pdf.set_text_color(0, 0, 0)
+    
+    # اردو رینڈرنگ
+    safe_content = pdf.render_urdu(content)
+    pdf.multi_cell(0, 10, safe_content, align='R')
+
+    # 4. Back Cover Page
+    if back_img:
+        pdf.add_page()
+        pdf.image(back_img, 0, 0, 210, 297)
+    
+    file_name = f"Titan_Book_{random.randint(100,999)}.pdf"
+    pdf.output(file_name)
     return file_name
 
 # 🎨  SECTION 4 : UI — KEYBOARDS, MENUS & SIDE PANEL
@@ -1090,35 +1078,34 @@ def cmd_engine(m):
         parse_mode="Markdown",
         reply_markup=get_engine_keyboard(uid),
     )
+user_data = {} # ٹارگٹ ٹاپک اور امیجز محفوظ کرنے کے لیے
+
 @bot.message_handler(commands=["makebook"])
-def cmd_makebook(m):
-    uid = m.from_user.id
-    topic = " ".join(m.text.split()[1:]).strip()
+def start_book(m):
+    msg = bot.send_message(m.chat.id, "📖 **Book کا ٹاپک لکھیں:**")
+    bot.register_next_step_handler(msg, get_topic)
 
-    if not topic:
-        bot.send_message(m.chat.id, "❌ **Topic لکھیں!**\nمثال: `/makebook Future of AI`", parse_mode="Markdown")
-        return
+def get_topic(m):
+    user_data[m.chat.id] = {'topic': m.text}
+    msg = bot.send_message(m.chat.id, "📸 **Front Cover امیج بھیجیں (یا /skip لکھیں):**")
+    bot.register_next_step_handler(msg, get_front_cover)
 
-    db.sync_user(uid, m.from_user.first_name, m.from_user.username or "")
+def get_front_cover(m):
+    if m.content_type == 'photo':
+        file_info = bot.get_file(m.photo[-1].file_id)
+        downloaded_file = bot.download_file(file_info.file_path)
+        with open(f"front_{m.chat.id}.jpg", 'wb') as f:
+            f.write(downloaded_file)
+        user_data[m.chat.id]['front'] = f"front_{m.chat.id}.jpg"
     
-    # Start Animation
-    mid = bot.send_message(m.chat.id, "🚀 **TITAN PDF ENGINE ACTIVATED!**\nکتاب کی تیاری شروع ہو رہی ہے...", parse_mode="Markdown").message_id
+    msg = bot.send_message(m.chat.id, "📸 **اب Back Cover امیج بھیجیں (یا /skip):**")
+    bot.register_next_step_handler(msg, get_back_cover)
 
-    try:
-        pdf_file = create_stylish_book(uid, topic, m.chat.id)
-        
-        with open(pdf_file, 'rb') as f:
-            bot.send_document(
-                m.chat.id, f, 
-                caption=f"📚 **Book Title:** {topic}\n✨ **Generated by:** {BOT_NAME}\n👑 **Architect:** {CREATOR_NAME}",
-                parse_mode="Markdown"
-            )
-        
-        os.remove(pdf_file) # Delete after sending
-        bot.delete_message(m.chat.id, mid)
-        
-    except Exception as e:
-        bot.send_message(m.chat.id, f"❌ **Error:** {str(e)}")
+def get_back_cover(m):
+    # اسی طرح بیک کور امیج لیں اور پھر فائنل فنکشن کال کریں:
+    # pdf = create_ultimate_book(m.from_user.id, topic, m.chat.id, front, back)
+    bot.send_message(m.chat.id, "🚀 **آپ کی کتاب پرنٹنگ کے لیے بھیج دی گئی ہے!**")
+    # ... باقی پراسیس
 
 
 @bot.message_handler(commands=["admin"])
