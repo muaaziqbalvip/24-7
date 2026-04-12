@@ -561,6 +561,7 @@ def get_main_keyboard(uid: int) -> types.InlineKeyboardMarkup:
     )
     # Row 5 — Info & Profile
     kb.add(
+    types.InlineKeyboardButton("IMG GENRATE 🖼️",    callback_data="gen"),
         types.InlineKeyboardButton("👤 My Profile",    callback_data="my_profile"),
         types.InlineKeyboardButton("ℹ️ About Bot",     callback_data="about_bot"),
     )
