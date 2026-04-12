@@ -1117,6 +1117,56 @@ def cmd_ascii(m):
 
     except Exception as e:
         bot.send_message(m.chat.id, f"❌ **Error:** {str(e)}")
+import requests
+import random
+import os
+
+@bot.message_handler(commands=["gen"])
+def cmd_generate_image(m):
+    uid = m.from_user.id
+    prompt = " ".join(m.text.split()[1:]).strip()
+
+    if not prompt:
+        bot.send_message(m.chat.id, "❌ **ٹاپک لکھیں!**\nمثال: `/gen a glowing lion in space`", parse_mode="Markdown")
+        return
+
+    # 1. پروفیشنل لائیو پروگریس
+    mid = bot.send_message(m.chat.id, "🎨 **TITAN AI: کنیکٹنگ ٹو نیورل نوڈز...**").message_id
+    
+    try:
+        # 2. تصویر کا لنک تیار کرنا (High Quality)
+        seed = random.randint(1, 999999)
+        image_url = f"https://image.pollinations.ai/prompt/{prompt.replace(' ', '%20')}?width=1024&height=1024&seed={seed}&nologo=true"
+        
+        bot.edit_message_text("⚡ **TITAN AI: تصویر ڈیزائن کر رہا ہے...**", m.chat.id, mid)
+        
+        # 3. تصویر ڈاؤن لوڈ کرنا
+        response = requests.get(image_url, timeout=20)
+        if response.status_color == 200:
+            file_name = f"gen_{uid}.jpg"
+            with open(file_name, 'wb') as f:
+                f.write(response.content)
+            
+            # 4. تصویر بھیجنا
+            bot.edit_message_text("🚀 **اپلوڈنگ ٹو ٹائٹن سرور...**", m.chat.id, mid)
+            
+            with open(file_name, 'rb') as photo:
+                bot.send_photo(
+                    m.chat.id, 
+                    photo, 
+                    caption=f"✨ **TITAN Artificial Intelligence**\n📝 **Prompt:** {prompt}\n👤 **Requested by:** {m.from_user.first_name}",
+                    parse_mode="Markdown"
+                )
+            
+            # صفائی (Cleanup)
+            bot.delete_message(m.chat.id, mid)
+            os.remove(file_name)
+        else:
+            bot.edit_message_text("❌ **سرور بیزی ہے، دوبارہ کوشش کریں۔**", m.chat.id, mid)
+
+    except Exception as e:
+        bot.edit_message_text(f"❌ **ایرر آگیا:** {str(e)}", m.chat.id, mid)
+
 @bot.message_handler(commands=["makebook"])
 def start_book(m):
     msg = bot.send_message(m.chat.id, "📖 **Book کا ٹاپک لکھیں:**")
