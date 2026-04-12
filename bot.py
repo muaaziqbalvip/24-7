@@ -527,88 +527,45 @@ def create_ultimate_book(uid, topic, chat_id, front_img=None, back_img=None):
 
 # 🎨  SECTION 4 : UI — KEYBOARDS, MENUS & SIDE PANEL
 # ══════════════════════════════════════════════════════════════════════════════════
-import google.generativeai as genai
 
-# فوٹو ہینڈلر (The Neural Eye)
-@bot.message_handler(content_types=['photo'])
-def handle_visual_intel(m):
-    chat_id = m.chat.id
-    bot.send_chat_action(chat_id, 'typing')
-    
-    # 1. تصویر ڈاؤن لوڈ کرنا
-    file_info = bot.get_file(m.photo[-1].file_id)
-    downloaded_file = bot.download_file(file_info.file_path)
-    
-    with open("visual_node.jpg", "wb") as f:
-        f.write(downloaded_file)
-        
-    bot.send_message(chat_id, "👁️ **MI AI: Scanning image with Neural Eye...**")
-
-    try:
-        # 2. AI کو تصویر دکھانا
-        img_data = {
-            'mime_type': 'image/jpeg',
-            'data': downloaded_file
-        }
-        
-        # سسٹم انسٹرکشن کے ساتھ پوچھنا
-        prompt = "آپ MI AI ہو جسے معاذ اقبال نے بنایا ہے۔ اس تصویر کو غور سے دیکھو اور بتاؤ اس میں کیا ہے؟"
-        
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content([prompt, img_data])
-        
-        # 3. جواب بھیجنا
-        bot.reply_to(m, f"🛰️ **MI AI Vision Result:**\n\n{response.text}", parse_mode="Markdown")
-        
-    except Exception as e:
-        bot.reply_to(m, "❌ **Error:** Neural link failed to scan image.")
-
-import time
-from mi_ui import get_main_keyboard, BANNER_URL, BOT_NAME, DEVELOPER
+from mi_ui import get_main_keyboard, get_engine_keyboard, BANNER_URL, BOT_NAME, DEVELOPER
 
 @bot.message_handler(commands=['start', 'menu'])
-def mi_ai_start(m):
+def send_welcome_menu(m):
     chat_id = m.chat.id
     uid = m.from_user.id
     
-    # 1. ANIMATION: Typing status dikhayega
+    # 1. Typing Action (Uper typing... likha ayega)
     bot.send_chat_action(chat_id, 'typing')
-    time.sleep(1.5) # Real feel ke liye
     
-    # 2. ANIMATION: Photo upload status
-    bot.send_chat_action(chat_id, 'upload_photo')
-    
-    # Sync User with Database
+    # 2. Sync User
     db.sync_user(uid, m.from_user.first_name, m.from_user.username or "")
     u = db.get_user(uid)
     role = u.get("role", "user")
 
-    # 3. Professional Caption with Muaaz Iqbal Branding
+    # 3. Dynamic Banner (Har baar thoda change)
+    current_banner = f"{BANNER_URL}&seed={random.randint(1,1000)}"
+    
+    # 4. Professional Text
     menu_text = (
-        f"🛰️ **{BOT_NAME} | NEURAL INTERFACE**\n"
+        f"🚀 **{BOT_NAME} | NEURAL INTERFACE**\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"Greetings, **{m.from_user.first_name}**! MI AI is active.\n\n"
-        f"👤 **Lead Dev:** `{DEVELOPER}`\n"
-        f"🧠 **Core:** Titan V20 Hybrid Engine\n"
-        f"📡 **Symmetry:** Stable & Encrypted\n\n"
-        f"✨ *Select a neural node to proceed:* "
+        f"Welcome, **{m.from_user.first_name}**!\n\n"
+        f"👤 **Developer:** `{DEVELOPER}`\n"
+        f"🧠 **System:** AI Hybrid Engine\n"
+        f"📡 **Status:** Fully Operational\n\n"
+        f"✨ *Niche diye gaye buttons se control karein:* "
     )
 
-    # 4. Final Delivery (Banner + Menu)
+    # 5. Send Photo with Menu
     bot.send_photo(
         chat_id,
-        BANNER_URL,
+        current_banner,
         caption=menu_text,
         reply_markup=get_main_keyboard(uid, role, ADMIN_ID, db),
         parse_mode="Markdown"
     )
 
-# --- Button Link for IMG GENERATE ---
-@bot.callback_query_handler(func=lambda call: call.data == "gen")
-def callback_image_gen(call):
-    bot.answer_callback_query(call.id, "🎨 Initializing MI AI Art Node...")
-    msg = bot.send_message(call.message.chat.id, "🖼️ **Aapko kis bare mein image chahiye?**\n(Detail likhein...)")
-    bot.register_next_step_handler(msg, process_img_request)
 
 # ══════════════════════════════════════════════════════════════════════════════════
 # ✨  SECTION 5 : ANIMATION ENGINE
