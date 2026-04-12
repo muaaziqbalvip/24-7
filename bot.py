@@ -1087,36 +1087,36 @@ def cmd_ascii(m):
     query = " ".join(m.text.split()[1:]).strip()
 
     if not query:
-        bot.send_message(m.chat.id, "❌ **Topic لکھیں!**\nمثال: `/ascii A futuristic city`", parse_mode="Markdown")
+        bot.send_message(m.chat.id, "❌ **Topic لکھیں!**", parse_mode="Markdown")
         return
 
-    db.sync_user(uid, m.from_user.first_name, m.from_user.username or "")
+    # 1. Initial Message
+    mid = bot.send_message(m.chat.id, "🛰️ **TITAN NEURAL PRESS: Initializing...**").message_id
     
-    # Start Animation
-    mid = bot.send_message(m.chat.id, "🛰️ **TITAN NEURAL PRESS ACTIVATED!**\nٹیکسٹ آرٹ کی تیاری شروع ہو رہی ہے...", parse_mode="Markdown").message_id
-
     try:
-        # ٹیکسٹ آرٹ بنانا
+        # 2. Live Step 1: Image Generation
+        bot.edit_message_text("🛰️ **TITAN NEURAL PRESS: Generating Neural Image...**", m.chat.id, mid)
+        
+        # 3. Live Step 2: ASCII Conversion (یہاں ہم اپنا فنکشن کال کریں گے)
+        # نوٹ: ہم فنکشن کو تھوڑا سا وقت دیں گے تاکہ یوزر پروگریس دیکھ سکے
+        import time
+        time.sleep(1) 
+        bot.edit_message_text("🛰️ **TITAN NEURAL PRESS: Converting Pixels to Text...**", m.chat.id, mid)
+        
         ascii_art = create_ascii_art(query, m.chat.id)
         
-        # ٹیلی گرام کے مارک ڈاؤن میں اسپیشل کریکٹرز کو ہینڈل کرنا
-        # ASCII آرٹ کو کوڈ بلاک (```) میں رکھنا ضروری ہے تاکہ الائنمنٹ خراب نہ ہو
-        safe_art = f"```\n{ascii_art}\n```"
-        
-        # اگر ٹیکسٹ بہت لمبا ہے، تو اسے پارٹس میں بھیجیں
-        if len(safe_art) > 4000:
-            for i in range(0, len(safe_art), 4000):
-                part = safe_art[i : i + 4000]
-                bot.send_message(m.chat.id, part, parse_mode="Markdown")
+        if ascii_art:
+            # 4. Final Delivery
+            time.sleep(1)
+            bot.edit_message_text("🛰️ **TITAN NEURAL PRESS: Finalizing Symmetry...**", m.chat.id, mid)
+            
+            final_msg = f"<b>🎨 TITAN ASCII ART: {query.upper()}</b>\n\n<code>{ascii_art}</code>"
+            bot.edit_message_text(final_msg, m.chat.id, mid, parse_mode="HTML")
         else:
-            bot.send_message(m.chat.id, safe_art, parse_mode="Markdown")
-        
-        bot.delete_message(m.chat.id, mid)
-        
-    except Exception as e:
-        logger.error(f"ASCII Art Error: {e}")
-        bot.send_message(m.chat.id, f"❌ **Error:** ASCII Art process failed or too complex.", parse_mode="Markdown")
+            bot.edit_message_text("❌ **FAILED: Neural link timed out.**", m.chat.id, mid)
 
+    except Exception as e:
+        bot.send_message(m.chat.id, f"❌ **Error:** {str(e)}")
 @bot.message_handler(commands=["makebook"])
 def start_book(m):
     msg = bot.send_message(m.chat.id, "📖 **Book کا ٹاپک لکھیں:**")
