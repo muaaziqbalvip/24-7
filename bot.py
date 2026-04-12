@@ -1085,7 +1085,42 @@ def cmd_ascii(m):
 # GLOBAL SESSION FOR STABLE CONNECTION
 session = requests.Session()
 
+import google.generativeai as genai
 
+# فوٹو ہینڈلر (The Neural Eye)
+@bot.message_handler(content_types=['photo'])
+def handle_visual_intel(m):
+    chat_id = m.chat.id
+    bot.send_chat_action(chat_id, 'typing')
+    
+    # 1. تصویر ڈاؤن لوڈ کرنا
+    file_info = bot.get_file(m.photo[-1].file_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+    
+    with open("visual_node.jpg", "wb") as f:
+        f.write(downloaded_file)
+        
+    bot.send_message(chat_id, "👁️ **MI AI: Scanning image with Neural Eye...**")
+
+    try:
+        # 2. AI کو تصویر دکھانا
+        img_data = {
+            'mime_type': 'image/jpeg',
+            'data': downloaded_file
+        }
+        
+        # سسٹم انسٹرکشن کے ساتھ پوچھنا
+        prompt = "آپ MI AI ہو جسے معاذ اقبال نے بنایا ہے۔ اس تصویر کو غور سے دیکھو اور بتاؤ اس میں کیا ہے؟"
+        
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content([prompt, img_data])
+        
+        # 3. جواب بھیجنا
+        bot.reply_to(m, f"🛰️ **MI AI Vision Result:**\n\n{response.text}", parse_mode="Markdown")
+        
+    except Exception as e:
+        bot.reply_to(m, "❌ **Error:** Neural link failed to scan image.")
+        
 import os
 import requests
 import random
