@@ -1117,87 +1117,111 @@ def cmd_ascii(m):
 
     except Exception as e:
         bot.send_message(m.chat.id, f"❌ **Error:** {str(e)}")
+
+# GLOBAL SESSION FOR STABLE CONNECTION
+session = requests.Session()
+
 @bot.message_handler(commands=["gen"])
-def cmd_generate_image(m):
+def cmd_generate_masterpiece(m):
     uid = m.from_user.id
+    chat_id = m.chat.id
+    
+    # Get prompt from user
     prompt = " ".join(m.text.split()[1:]).strip()
 
+    # 1. Input Validation
     if not prompt:
-        bot.send_message(m.chat.id, "❌ **ٹاپک لکھیں!**\nمثال: `/gen real human on mars`", parse_mode="Markdown")
+        bot.send_message(chat_id, "❌ **ٹاپک لکھیں!**\nمثال: `/gen a roaring tiger with lightning`", parse_mode="Markdown")
         return
 
-    # 1. Start Live Animation
-    mid = bot.send_message(m.chat.id, "🎨 **TITAN AI: Initializing...**").message_id
+    # 2. Sync User & Register Chat
+    db.sync_user(uid, m.from_user.first_name, m.from_user.username or "")
+    db.register_chat(chat_id, m.chat.type, getattr(m.chat, "title", "") or "")
     
-    # تصویر کو ڈاؤن لوڈ کرنے کے لیے فائل کا نام
-    file_name = f"titan_gen_{random.randint(100,999)}.jpg"
+    # 3. Start Live Progress (Side Menu Animation)
+    mid = bot.send_message(chat_id, "🎨 **TITAN AI: Initializing Multi-Agent Swarm...**", parse_mode="Markdown").message_id
+    
+    # Unique file name for each request
+    file_name = f"titan_art_{uid}_{random.randint(100,999)}.jpg"
+    
+    # --- MULTI-MODEL LOGIC (The Brain) ---
+    # prioritized list of best models
+    models = ["flux", "flux-pro", "turbo", "pollinations-ai-aesthetic"]
+    
+    image_data = None
+    engine_used = ""
+    
+    # URL Encode prompt safely
+    encoded_prompt = requests.utils.quote(prompt)
+    seed = random.randint(1, 999999)
 
-    try:
-        # 2. Prepare Image Link (Engine 1 - Fast)
-        # ہم ٹاپک کو صحیح طریقے سے URL میں بدلیں گے
-        encoded_prompt = requests.utils.quote(prompt)
-        seed = random.randint(1, 999999)
-        
-        # Primary Image Server (Pollinations)
-        image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&seed={seed}&nologo=true"
-        
-        bot.edit_message_text("⚡ **TITAN AI: Generating Image...**", m.chat.id, mid)
-        
-        # 3. Download Image from Primary Server
-        response = session.get(image_url, timeout=25) # 25 سیکنڈ کا ٹائم آؤٹ
+    # 4. Try Models in priority order
+    for model in models:
+        try:
+            bot.edit_message_text(f"🛰️ **TITAN AI: Synchronizing Node...** `({model.upper()})`", chat_id, mid, parse_mode="Markdown")
+            
+            # Construct URL for the specific model
+            image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?model={model}&width=1024&height=1024&seed={seed}&nologo=true"
+            
+            logger.info(f"Trying to generate with {model} for uid={uid}")
+            
+            # Try to download with 25s timeout per model
+            response = session.get(image_url, timeout=25)
+            
+            # check if successfully downloaded
+            if response.status_code == 200 and len(response.content) > 5000: # ensure data is valid image (not too small)
+                image_data = response.content
+                engine_used = model.upper()
+                logger.info(f"✅ Success with {model}")
+                break # stop the loop, we found a good image
+            else:
+                logger.warning(f"⚠️ Model {model} returned {response.status_code}. Retrying next...")
+                continue # move to next model
+                
+        except Exception as e:
+            logger.error(f"❌ Error with model {model}: {e}. Retrying next...")
+            continue # move to next model, dont crash
 
-        # --- CHECK IF DOWNLOAD SUCCESS ---
-        if response.status_code == 200:
+    # 5. Handle Final Result
+    if image_data:
+        try:
+            # SAVE the image data into the file (rb mode)
             with open(file_name, 'wb') as f:
-                f.write(response.content)
-            print(f"✅ Downloaded {file_name}")
+                f.write(image_data)
+                
+            bot.edit_message_text(f"🚀 **TITAN AI: Finalizing Synthesis...** `({engine_used})`", chat_id, mid, parse_mode="Markdown")
             
-            # 4. Upload to Telegram
-            bot.edit_message_text("🚀 **TITAN AI: Uploading to Telegram...**", m.chat.id, mid)
-            
-            # پائیتھون میں فائل کو اوپن کر کے بھیجنا ضروری ہے
+            # UPLOAD to Telegram (Proper logic fit - Read Binary)
             with open(file_name, 'rb') as photo:
                 bot.send_photo(
-                    m.chat.id, 
+                    chat_id, 
                     photo, 
-                    caption=f"✨ **TITAN Artificial Intelligence**\n📝 **Prompt:** {prompt}\n👤 **User:** {m.from_user.first_name}",
+                    caption=f"✨ **TITAN Artificial Intelligence**\n📝 **Prompt:** {prompt}\n👤 **User:** {m.from_user.first_name}\n🧠 **Node:** _{engine_used}_",
                     parse_mode="Markdown"
                 )
             
-            # final delivery status
-            bot.delete_message(m.chat.id, mid)
-
-        else:
-            # ⚠️ Primary Server Failed, trying Backup Server...
-            bot.edit_message_text("🔄 **Backup Neural Press...**", m.chat.id, mid)
+            # Cleanup & Stats
+            bot.delete_message(chat_id, mid)
+            db.increment_queries(uid)
+            db.log_event(uid, "ai_generate_image", engine_used)
             
-            # Backup Image Server (اگر پولی نیشنز کام نہ کرے)
-            backup_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?model=flux"
-            response = session.get(backup_url, timeout=20)
+        except Exception as e:
+            logger.error(f"❌ Final upload error: {e}")
+            bot.edit_message_text(f"❌ **Error:** Delivery failed.\n_(Neural link unstable)_", chat_id, mid, parse_mode="Markdown")
             
-            if response.status_code == 200:
-                with open(file_name, 'wb') as f:
-                    f.write(response.content)
-                
-                with open(file_name, 'rb') as photo:
-                    bot.send_photo(m.chat.id, photo, caption=f"✨ **TITAN (Backup Engine)**\n📝 **Prompt:** {prompt}", parse_mode="Markdown")
-                bot.delete_message(m.chat.id, mid)
-            else:
-                bot.edit_message_text("❌ **FAILED: All Neural Nodes are overloaded.** 🙏 Try in 1 minute.", m.chat.id, mid)
-
-    except Exception as e:
-        logger.error(f"Generate Image Error: {e}")
-        bot.edit_message_text(f"❌ **Error:** Image process failed.\n_(Neural link unstable)_", m.chat.id, mid)
+    else:
+        # If all models failed
+        logger.critical(f"❌ All models failed for prompt: {prompt}")
+        bot.edit_message_text(f"⚠️ **MI AI Nodes are Overloaded.** Please try in 1 minute. 🙏", chat_id, mid, parse_mode="Markdown")
         
-    # --- FINAL CLEANUP (Crucial - DONT DELETE) ---
-    finally:
-        # اگر فائل ڈاؤن لوڈ ہو گئی ہو تو اسے سرور سے ڈیلیٹ کر دو
-        if os.path.exists(file_name):
-            try:
-                os.remove(file_name)
-                print(f"🗑️ Cleaned {file_name}")
-            except Exception as ce:
-                 logger.warning(f"Cleanup Error: {ce}")
+    # --- ULTIMATE CLEANUP (Crucial - DONT DELETE) ---
+    # ensure file is deleted even if code crashes
+    if os.path.exists(file_name):
+        try:
+            os.remove(file_name)
+            logger.info(f"🗑️ Cleaned temp file: {file_name}")
+        except Exception as ce:
+             logger.warning(f"Cleanup Error: {ce}")
 
 @bot.message_handler(commands=["makebook"])
 def start_book(m):
