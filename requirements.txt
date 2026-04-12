@@ -1,6 +1,8 @@
 pyTelegramBotAPI
 requests
 fpdf2
+arabic-reshaper
+python-bidi
 duckduckgo-search
 firebase-admin
 beautifulsoup4
