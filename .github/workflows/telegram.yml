@@ -1,33 +1,64 @@
-name: MI AI ULTRA
+name: MI AI ULTRA 🚀
 
 on:
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "0 */6 * * *"   # har 6 ghante
   push:
   workflow_dispatch:
+
+concurrency:
+  group: mi-ai-bot
+  cancel-in-progress: false   # running job ko band na kare
 
 jobs:
   run:
     runs-on: ubuntu-latest
+    timeout-minutes: 360   # max 6h GitHub limit
 
     steps:
-      - uses: actions/checkout@v3
+      # 📥 Repo Checkout
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v3
 
-      - uses: actions/setup-python@v4
+      # 🐍 Python Setup
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
-      - run: pip install -r requirements.txt
+      # 📦 Install Dependencies
+      - name: 📦 Install Requirements
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Run Bot Loop
+      # 🔁 Smart Loop Runner (Auto Restart)
+      - name: ♾️ Run MI AI Loop
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
+          echo "🚀 MI AI STARTED..."
+
           while true
           do
+            echo "▶️ Running bot..."
             python bot.py
+
+            echo "⚠️ Bot crashed or stopped. Restarting in 5 seconds..."
             sleep 5
           done
+
+      # 🔄 Self Trigger Backup (agar schedule fail ho jaye)
+      - name: 🔄 Self Trigger Next Run
+        if: always()
+        run: |
+          echo "🔁 Triggering next workflow..."
+
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/${{ github.workflow }}/dispatches \
+            -d '{"ref":"main"}'
