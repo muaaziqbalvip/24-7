@@ -381,7 +381,7 @@ class NeuralEngine:
             "Content-Type":  "application/json",
         }
         payload = {
-            "model": "google/gemini-2.0-flash-exp:free",
+           "model": "openai/gpt-5.4-pro",
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user",   "content": prompt},
