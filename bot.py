@@ -381,7 +381,7 @@ class NeuralEngine:
             "Content-Type":  "application/json",
         }
         payload = {
-            "model": "mistralai/mistral-7b-instruct:free",
+            "model": "google/gemini-2.0-flash-exp:free",
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user",   "content": prompt},
