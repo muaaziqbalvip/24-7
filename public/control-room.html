@@ -1,0 +1,1905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎬 Stream Control Room</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<style>
+:root {
+  --red: #ff2244;
+  --gold: #ffd700;
+  --blue: #00aaff;
+  --green: #00ff88;
+  --dark: #070b14;
+  --panel: #0d1420;
+  --panel2: #111825;
+  --border: #1e2d45;
+  --text: #c8dff5;
+  --glow: 0 0 20px rgba(0,170,255,0.3);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--dark);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Animated grid background */
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  background:
+    linear-gradient(rgba(0,170,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,170,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events:none;
+  z-index:0;
+}
+
+/* TOP HEADER */
+.header {
+  position: sticky;
+  top:0;
+  z-index:100;
+  background: linear-gradient(180deg, #050810 0%, rgba(5,8,16,0.95) 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  backdrop-filter: blur(20px);
+}
+
+.header-logo {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--blue);
+  text-shadow: 0 0 20px rgba(0,170,255,0.6);
+  letter-spacing: 2px;
+}
+
+.header-logo span { color: var(--red); }
+
+.live-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,34,68,0.15);
+  border: 1px solid var(--red);
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  color: var(--red);
+}
+
+.live-dot {
+  width: 8px; height: 8px;
+  background: var(--red);
+  border-radius: 50%;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50% { opacity:0.4; transform:scale(0.7); }
+}
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+}
+
+.status-indicator {
+  padding: 4px 12px;
+  border-radius: 3px;
+  font-weight: 600;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+}
+.status-live { background: rgba(0,255,136,0.15); color: var(--green); border: 1px solid var(--green); }
+.status-offline { background: rgba(255,34,68,0.15); color: var(--red); border: 1px solid var(--red); }
+.status-loading { background: rgba(255,215,0,0.15); color: var(--gold); border: 1px solid var(--gold); }
+
+/* MAIN LAYOUT */
+.main-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 0;
+  height: calc(100vh - 58px);
+  position: relative;
+  z-index: 1;
+}
+
+/* LEFT - Preview + Controls */
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+/* VIDEO PREVIEW */
+.preview-section {
+  background: #000;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.preview-header {
+  background: var(--panel);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+
+.preview-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  color: var(--blue);
+  letter-spacing: 2px;
+}
+
+.preview-wrap {
+  position: relative;
+  background: #000;
+  aspect-ratio: 16/9;
+  max-height: 320px;
+  overflow: hidden;
+}
+
+.preview-wrap video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.preview-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Ticker preview */
+.ticker-preview {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.85);
+  padding: 8px 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.ticker-content {
+  white-space: nowrap;
+  animation: scroll-left 20s linear infinite;
+  font-size: 14px;
+  color: white;
+  padding-left: 100%;
+}
+
+@keyframes scroll-left {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+/* Clock overlay */
+.clock-overlay {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0,0,0,0.8);
+  padding: 4px 10px;
+  border-radius: 3px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  color: white;
+}
+
+.date-overlay {
+  position: absolute;
+  top: 42px;
+  right: 10px;
+  background: rgba(0,0,0,0.7);
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: var(--gold);
+}
+
+.live-overlay {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: var(--red);
+  padding: 3px 10px;
+  border-radius: 2px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  color: white;
+  font-weight: 700;
+}
+
+/* CONTROL TABS */
+.tabs {
+  display: flex;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.tab {
+  padding: 12px 20px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #4a6080;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tab:hover { color: var(--blue); }
+.tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+/* TAB PANELS */
+.tab-panel { display: none; padding: 16px; }
+.tab-panel.active { display: block; }
+
+/* PANELS */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.panel-head {
+  background: var(--panel2);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  color: var(--blue);
+  letter-spacing: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-body { padding: 14px; }
+
+/* FORM ELEMENTS */
+.field { margin-bottom: 12px; }
+
+label {
+  display: block;
+  font-size: 12px;
+  color: #6080a0;
+  margin-bottom: 5px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+input[type=text], input[type=url], input[type=number], select, textarea {
+  width: 100%;
+  background: #050810;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px 12px;
+  border-radius: 5px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(0,170,255,0.15);
+}
+
+textarea { resize: vertical; min-height: 70px; }
+
+/* SLIDERS */
+.slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+input[type=range] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--blue);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0,170,255,0.5);
+}
+
+.slider-val {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  color: var(--gold);
+  min-width: 40px;
+  text-align: right;
+}
+
+/* TOGGLE */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(30,45,69,0.5);
+}
+
+.toggle-row:last-child { border-bottom: none; }
+
+.toggle-label { font-size: 13px; font-weight: 600; }
+
+.toggle {
+  position: relative;
+  width: 44px;
+  height: 24px;
+}
+
+.toggle input { display: none; }
+
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: #1a2535;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.3s;
+  border: 1px solid var(--border);
+}
+
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  background: #4a6080;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: all 0.3s;
+}
+
+input:checked + .toggle-slider { background: rgba(0,170,255,0.2); border-color: var(--blue); }
+input:checked + .toggle-slider::after { transform: translateX(20px); background: var(--blue); }
+
+/* BUTTONS */
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-primary { background: var(--blue); color: #000; }
+.btn-primary:hover { background: #33bbff; box-shadow: 0 0 20px rgba(0,170,255,0.4); }
+
+.btn-danger { background: var(--red); color: white; }
+.btn-danger:hover { background: #ff4466; box-shadow: 0 0 20px rgba(255,34,68,0.4); }
+
+.btn-success { background: var(--green); color: #000; }
+.btn-success:hover { background: #33ffaa; box-shadow: 0 0 20px rgba(0,255,136,0.4); }
+
+.btn-warning { background: var(--gold); color: #000; }
+.btn-warning:hover { box-shadow: 0 0 20px rgba(255,215,0,0.4); }
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.btn-outline:hover { border-color: var(--blue); color: var(--blue); }
+
+.btn-sm { padding: 6px 12px; font-size: 10px; }
+.btn-full { width: 100%; justify-content: center; margin-top: 8px; }
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+/* RIGHT PANEL - Live Monitor */
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--panel);
+}
+
+.right-head {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  color: var(--blue);
+  letter-spacing: 2px;
+  background: var(--panel2);
+  flex-shrink: 0;
+}
+
+/* STREAM STATUS */
+.status-card {
+  margin: 12px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.stat-item {
+  background: #050810;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 10px;
+  text-align: center;
+}
+
+.stat-val {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 18px;
+  color: var(--blue);
+  display: block;
+}
+
+.stat-label {
+  font-size: 10px;
+  color: #4a6080;
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* SCHEDULE */
+.schedule-item {
+  background: #050810;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  position: relative;
+}
+
+.schedule-item:hover { border-color: var(--blue); }
+.schedule-item.active { border-color: var(--green); }
+
+.schedule-item .si-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: white;
+}
+
+.schedule-item .si-time {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  color: var(--gold);
+  margin-top: 3px;
+}
+
+.schedule-item .si-url {
+  font-size: 11px;
+  color: #4a6080;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.si-del {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #4a6080;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 2px;
+}
+
+.si-del:hover { color: var(--red); }
+
+/* LOGO TEMPLATES */
+.templates-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.template-card {
+  aspect-ratio: 16/9;
+  border: 2px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.2s;
+  position: relative;
+}
+
+.template-card:hover { border-color: var(--blue); transform: scale(1.02); }
+.template-card.selected { border-color: var(--gold); }
+
+.template-card canvas { width: 100%; height: 100%; display: block; }
+
+/* LOG */
+.log-container {
+  margin: 12px;
+  background: #020508;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  height: 200px;
+  overflow-y: auto;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+}
+
+.log-line { padding: 2px 0; border-bottom: 1px solid rgba(30,45,69,0.3); }
+.log-info { color: var(--blue); }
+.log-success { color: var(--green); }
+.log-error { color: var(--red); }
+.log-warn { color: var(--gold); }
+
+/* IMGBB Upload */
+.img-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.img-thumb {
+  aspect-ratio: 1;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.2s;
+}
+
+.img-thumb:hover { border-color: var(--blue); }
+.img-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.img-thumb .use-btn {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,170,255,0.9);
+  color: #000;
+  font-weight: 700;
+  font-size: 11px;
+  text-align: center;
+  padding: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  font-family: 'Orbitron', sans-serif;
+}
+
+.img-thumb:hover .use-btn { opacity: 1; }
+
+/* Color picker row */
+.color-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+input[type=color] {
+  width: 40px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: none;
+  cursor: pointer;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+/* Ticker position */
+.pos-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.pos-btn {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: #050810;
+  color: #6080a0;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: center;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.pos-btn:hover, .pos-btn.active { border-color: var(--blue); color: var(--blue); background: rgba(0,170,255,0.1); }
+
+/* Push notification */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--panel2);
+  border: 1px solid var(--green);
+  color: var(--green);
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.3s;
+  pointer-events: none;
+}
+
+.toast.show { opacity: 1; transform: translateY(0); }
+
+/* M3U8 Link display */
+.link-display {
+  background: #020508;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 10px 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--green);
+  word-break: break-all;
+  margin-bottom: 8px;
+}
+
+/* Section divider */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 14px 0;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .main-layout { grid-template-columns: 1fr; height: auto; }
+  .right-panel { border-top: 1px solid var(--border); }
+}
+
+/* Channel selector */
+.channel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.channel-card {
+  background: #050810;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.channel-card:hover { border-color: var(--blue); }
+.channel-card.active { border-color: var(--green); background: rgba(0,255,136,0.05); }
+
+.channel-icon { font-size: 24px; margin-bottom: 4px; }
+.channel-name { font-size: 12px; font-weight: 600; }
+
+/* Upload zone */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #4a6080;
+}
+
+.upload-zone:hover { border-color: var(--blue); color: var(--blue); }
+.upload-zone input { display: none; }
+
+/* Audio visualizer bars */
+.viz-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 40px;
+  padding: 0 4px;
+}
+
+.viz-bar {
+  flex: 1;
+  background: var(--blue);
+  border-radius: 2px 2px 0 0;
+  opacity: 0.7;
+  animation: viz-anim var(--d, 0.8s) ease-in-out infinite alternate;
+}
+
+@keyframes viz-anim {
+  from { height: 20%; }
+  to { height: 100%; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">STREAM<span>X</span> CONTROL</div>
+  <div class="live-badge">
+    <div class="live-dot"></div>
+    LIVE ON AIR
+  </div>
+  <div class="status-bar">
+    <div id="workflowStatus" class="status-indicator status-loading">CONNECTING...</div>
+    <div id="headerClock" style="font-family:'Orbitron',sans-serif;font-size:14px;color:var(--gold)">00:00:00</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main-layout">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <!-- PREVIEW -->
+    <div class="preview-section">
+      <div class="preview-header">
+        <span class="preview-title">▶ LIVE PREVIEW</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-sm btn-outline" onclick="togglePreview()">⟳ RELOAD</button>
+          <button class="btn btn-sm btn-danger" id="masterStop" onclick="toggleStream()">⏹ STOP</button>
+          <button class="btn btn-sm btn-success" id="masterStart" onclick="applyAll()" style="display:none">▶ START</button>
+        </div>
+      </div>
+      <div class="preview-wrap">
+        <video id="previewVideo" muted autoplay playsinline></video>
+        <div class="preview-overlay">
+          <!-- LIVE badge -->
+          <div class="live-overlay">● LIVE</div>
+          <!-- Clock -->
+          <div class="clock-overlay" id="previewClock">00:00:00</div>
+          <div class="date-overlay" id="previewDate">01 Jan 2025</div>
+          <!-- Ticker -->
+          <div class="ticker-preview" id="tickerPreview">
+            <div class="ticker-content" id="tickerText">LIVE BROADCAST • WELCOME TO THE STREAM • </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('source')">📡 SOURCE</div>
+      <div class="tab" onclick="switchTab('overlays')">🎨 OVERLAYS</div>
+      <div class="tab" onclick="switchTab('audio')">🎵 AUDIO</div>
+      <div class="tab" onclick="switchTab('schedule')">📅 SCHEDULE</div>
+      <div class="tab" onclick="switchTab('images')">🖼 IMAGES</div>
+      <div class="tab" onclick="switchTab('templates')">✨ TEMPLATES</div>
+      <div class="tab" onclick="switchTab('output')">📤 OUTPUT</div>
+    </div>
+
+    <!-- SOURCE TAB -->
+    <div class="tab-panel active" id="tab-source">
+      <div class="panel">
+        <div class="panel-head">📡 STREAM SOURCE</div>
+        <div class="panel-body">
+          <div class="field">
+            <label>Source URL (M3U8 / MP4 / MKV / YouTube / Live Link)</label>
+            <input type="url" id="sourceUrl" placeholder="https://... or YouTube URL" />
+          </div>
+          <div class="field">
+            <label>Resolution</label>
+            <select id="resolution">
+              <option value="1920x1080">1920×1080 (Full HD)</option>
+              <option value="1280x720" selected>1280×720 (HD)</option>
+              <option value="854x480">854×480 (SD)</option>
+              <option value="640x360">640×360 (Low)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Bitrate</label>
+            <select id="bitrate">
+              <option value="4000k">4000k (High)</option>
+              <option value="2500k" selected>2500k (Medium)</option>
+              <option value="1500k">1500k (Low)</option>
+              <option value="800k">800k (Mobile)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Quick Sources</label>
+            <div class="channel-grid">
+              <div class="channel-card" onclick="setSource('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8')">
+                <div class="channel-icon">📺</div>
+                <div class="channel-name">Test Stream</div>
+              </div>
+              <div class="channel-card" onclick="setSource('https://live.cgtn.com/1000/prog_index.m3u8')">
+                <div class="channel-icon">🌐</div>
+                <div class="channel-name">CGTN Live</div>
+              </div>
+              <div class="channel-card" onclick="promptCustom()">
+                <div class="channel-icon">🎬</div>
+                <div class="channel-name">YouTube URL</div>
+              </div>
+              <div class="channel-card" onclick="setSource('')">
+                <div class="channel-icon">📁</div>
+                <div class="channel-name">Custom URL</div>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-full" onclick="applyAll()">▶ APPLY & GO LIVE</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- OVERLAYS TAB -->
+    <div class="tab-panel" id="tab-overlays">
+
+      <!-- Ticker -->
+      <div class="panel">
+        <div class="panel-head">📰 TICKER / SCROLLING TEXT</div>
+        <div class="panel-body">
+          <div class="toggle-row">
+            <span class="toggle-label">Show Ticker Bar</span>
+            <label class="toggle"><input type="checkbox" id="showTicker" checked onchange="updateTicker()"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="field" style="margin-top:10px">
+            <label>Ticker Text</label>
+            <textarea id="tickerTextInput" rows="2" oninput="updateTicker()">LIVE BROADCAST • WELCOME TO OUR CHANNEL • STAY TUNED FOR MORE •</textarea>
+          </div>
+          <div class="field">
+            <label>Ticker Position</label>
+            <div class="pos-grid">
+              <div class="pos-btn active" onclick="setTickerPos('bottom',this)">⬇ BOTTOM</div>
+              <div class="pos-btn" onclick="setTickerPos('top',this)">⬆ TOP</div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Ticker Speed</label>
+            <div class="slider-wrap">
+              <input type="range" id="tickerSpeed" min="30" max="200" value="100" oninput="updateTickerSpeed(this)">
+              <span class="slider-val" id="tickerSpeedVal">100</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Background Color</label>
+            <div class="color-row">
+              <input type="color" id="tickerBg" value="#000000">
+              <input type="text" id="tickerBgText" value="#000000" style="flex:1" oninput="syncColor('tickerBg','tickerBgText')">
+              <label style="margin:0;white-space:nowrap">Opacity</label>
+              <input type="range" min="0" max="100" value="85" style="width:80px" oninput="this.nextElementSibling.textContent=this.value+'%'">
+              <span style="font-size:12px;color:var(--gold)">85%</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Text Color</label>
+            <div class="color-row">
+              <input type="color" id="tickerColor" value="#ffffff">
+              <input type="text" id="tickerColorText" value="#ffffff" style="flex:1">
+            </div>
+          </div>
+          <div class="field">
+            <label>Font Size</label>
+            <div class="slider-wrap">
+              <input type="range" id="tickerFontSize" min="14" max="60" value="28" oninput="this.nextElementSibling.textContent=this.value+'px'">
+              <span class="slider-val">28px</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clock -->
+      <div class="panel">
+        <div class="panel-head">⏰ CLOCK & DATE</div>
+        <div class="panel-body">
+          <div class="toggle-row">
+            <span class="toggle-label">Show Clock</span>
+            <label class="toggle"><input type="checkbox" id="showClock" checked onchange="saveConfig()"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">Show Date</span>
+            <label class="toggle"><input type="checkbox" id="showDate" checked onchange="saveConfig()"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">12-Hour Format</span>
+            <label class="toggle"><input type="checkbox" id="clock12h" onchange="saveConfig()"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="field" style="margin-top:10px">
+            <label>Timezone</label>
+            <select id="clockTimezone" onchange="saveConfig()">
+              <option value="UTC">UTC</option>
+              <option value="Asia/Karachi">Pakistan (PKT)</option>
+              <option value="America/New_York">USA East (EST)</option>
+              <option value="America/Los_Angeles">USA West (PST)</option>
+              <option value="Europe/London">UK (GMT)</option>
+              <option value="Europe/Paris">Europe (CET)</option>
+              <option value="Asia/Dubai">Dubai (GST)</option>
+              <option value="Asia/Kolkata">India (IST)</option>
+              <option value="Asia/Tokyo">Japan (JST)</option>
+              <option value="Australia/Sydney">Australia (AEDT)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Clock Position</label>
+            <div class="pos-grid">
+              <div class="pos-btn active" onclick="setPos('clock','top-right',this)">↗ TOP RIGHT</div>
+              <div class="pos-btn" onclick="setPos('clock','top-left',this)">↖ TOP LEFT</div>
+              <div class="pos-btn" onclick="setPos('clock','bottom-right',this)">↘ BOTTOM RIGHT</div>
+              <div class="pos-btn" onclick="setPos('clock','bottom-left',this)">↙ BOTTOM LEFT</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Logo -->
+      <div class="panel">
+        <div class="panel-head">🏷 LOGO / WATERMARK</div>
+        <div class="panel-body">
+          <div class="toggle-row">
+            <span class="toggle-label">Show Logo</span>
+            <label class="toggle"><input type="checkbox" id="showLogo" onchange="saveConfig()"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="field" style="margin-top:10px">
+            <label>Logo URL (from ImgBB or any URL)</label>
+            <input type="url" id="logoUrl" placeholder="https://i.ibb.co/xxx/logo.png" oninput="saveConfig()">
+          </div>
+          <div class="field">
+            <label>Logo Position</label>
+            <div class="pos-grid">
+              <div class="pos-btn active" onclick="setPos('logo','top-left',this)">↖ TOP LEFT</div>
+              <div class="pos-btn" onclick="setPos('logo','top-right',this)">↗ TOP RIGHT</div>
+              <div class="pos-btn" onclick="setPos('logo','bottom-left',this)">↙ BOTTOM LEFT</div>
+              <div class="pos-btn" onclick="setPos('logo','bottom-right',this)">↘ BOTTOM RIGHT</div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Logo Size</label>
+            <div class="slider-wrap">
+              <input type="range" id="logoSize" min="50" max="300" value="120" oninput="this.nextElementSibling.textContent=this.value+'px'">
+              <span class="slider-val">120px</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Logo Opacity</label>
+            <div class="slider-wrap">
+              <input type="range" id="logoOpacity" min="10" max="100" value="90" oninput="this.nextElementSibling.textContent=this.value+'%'">
+              <span class="slider-val">90%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Text Box -->
+      <div class="panel">
+        <div class="panel-head">📝 CUSTOM TEXT BOX</div>
+        <div class="panel-body">
+          <div class="toggle-row">
+            <span class="toggle-label">Show Custom Text</span>
+            <label class="toggle"><input type="checkbox" id="showTextBox" onchange="saveConfig()"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="field" style="margin-top:10px">
+            <label>Custom Text</label>
+            <input type="text" id="customTextBox" placeholder="Your custom text here" oninput="saveConfig()">
+          </div>
+          <div class="field">
+            <label>Position</label>
+            <div class="pos-grid">
+              <div class="pos-btn active" onclick="setPos('textbox','center',this)">⊙ CENTER</div>
+              <div class="pos-btn" onclick="setPos('textbox','top-center',this)">⬆ TOP</div>
+              <div class="pos-btn" onclick="setPos('textbox','left-center',this)">⬅ LEFT</div>
+              <div class="pos-btn" onclick="setPos('textbox','right-center',this)">➡ RIGHT</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full" onclick="applyAll()">✅ APPLY OVERLAYS</button>
+    </div>
+
+    <!-- AUDIO TAB -->
+    <div class="tab-panel" id="tab-audio">
+      <div class="panel">
+        <div class="panel-head">🎵 AUDIO SETTINGS</div>
+        <div class="panel-body">
+          <div class="field">
+            <label>Volume</label>
+            <div class="slider-wrap">
+              <input type="range" id="audioVolume" min="0" max="3" step="0.1" value="1.0" oninput="updateAudio(this,'volumeVal')">
+              <span class="slider-val" id="volumeVal">1.0x</span>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div class="field">
+            <label>Pitch Shift</label>
+            <div class="slider-wrap">
+              <input type="range" id="audioPitch" min="0.5" max="2.0" step="0.05" value="1.0" oninput="updateAudio(this,'pitchVal')">
+              <span class="slider-val" id="pitchVal">1.0x</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Audio EQ Preset</label>
+            <select id="audioEQ" onchange="saveConfig()">
+              <option value="normal">Normal</option>
+              <option value="bass_boost">Bass Boost</option>
+              <option value="voice_enhance">Voice Enhance</option>
+              <option value="treble_boost">Treble Boost</option>
+              <option value="flat">Flat</option>
+            </select>
+          </div>
+          <div class="divider"></div>
+          <div class="field">
+            <label>Background Music URL (MP3)</label>
+            <input type="url" id="bgMusicUrl" placeholder="https://... mp3 link" oninput="saveConfig()">
+          </div>
+          <div class="field">
+            <label>Background Music Volume</label>
+            <div class="slider-wrap">
+              <input type="range" id="bgMusicVol" min="0" max="1" step="0.05" value="0.3" oninput="this.nextElementSibling.textContent=Math.round(this.value*100)+'%'">
+              <span class="slider-val">30%</span>
+            </div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">Mute Stream Audio</span>
+            <label class="toggle"><input type="checkbox" id="muteStream" onchange="saveConfig()"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="divider"></div>
+          <!-- Visualizer -->
+          <label>Live Audio Meter</label>
+          <div class="viz-bars" id="vizBars">
+            <!-- Bars added by JS -->
+          </div>
+          <div class="btn-row" style="margin-top:12px">
+            <button class="btn btn-primary" onclick="applyAll()">✅ APPLY AUDIO</button>
+            <button class="btn btn-outline" onclick="testAudio()">🔊 TEST</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCHEDULE TAB -->
+    <div class="tab-panel" id="tab-schedule">
+      <div class="panel">
+        <div class="panel-head">📅 PROGRAM SCHEDULE</div>
+        <div class="panel-body">
+          <div class="toggle-row">
+            <span class="toggle-label">Enable Schedule</span>
+            <label class="toggle"><input type="checkbox" id="scheduleEnabled" onchange="saveConfig()"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="divider"></div>
+
+          <div class="field">
+            <label>Show / Program Name</label>
+            <input type="text" id="showName" placeholder="e.g. Morning News">
+          </div>
+          <div class="field">
+            <label>Start Time</label>
+            <input type="time" id="showStart">
+          </div>
+          <div class="field">
+            <label>End Time</label>
+            <input type="time" id="showEnd">
+          </div>
+          <div class="field">
+            <label>Stream URL for this Show</label>
+            <input type="url" id="showUrl" placeholder="https://...">
+          </div>
+          <div class="field">
+            <label>Show Image</label>
+            <input type="url" id="showImage" placeholder="https://i.ibb.co/... image URL">
+          </div>
+          <div class="field">
+            <label>Days</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <label style="display:flex;align-items:center;gap:4px;text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" value="mon"> Mon</label>
+              <label style="display:flex;align-items:center;gap:4px;text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" value="tue"> Tue</label>
+              <label style="display:flex;align-items:center;gap:4px;text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" value="wed"> Wed</label>
+              <label style="display:flex;align-items:center;gap:4px;text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" value="thu"> Thu</label>
+              <label style="display:flex;align-items:center;gap:4px;text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" value="fri"> Fri</label>
+              <label style="display:flex;align-items:center;gap:4px;text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" value="sat"> Sat</label>
+              <label style="display:flex;align-items:center;gap:4px;text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" value="sun"> Sun</label>
+            </div>
+          </div>
+          <button class="btn btn-success btn-full" onclick="addScheduleItem()">+ ADD TO SCHEDULE</button>
+        </div>
+      </div>
+
+      <div id="scheduleList">
+        <!-- Dynamic schedule items -->
+      </div>
+    </div>
+
+    <!-- IMAGES TAB -->
+    <div class="tab-panel" id="tab-images">
+      <div class="panel">
+        <div class="panel-head">🖼 IMGBB IMAGE MANAGER</div>
+        <div class="panel-body">
+          <div class="upload-zone" onclick="document.getElementById('imgFile').click()">
+            <input type="file" id="imgFile" accept="image/*" onchange="uploadImage(this)">
+            <div style="font-size:28px;margin-bottom:8px">📤</div>
+            <div style="font-size:14px;font-weight:600">Click to Upload Image</div>
+            <div style="font-size:11px;color:#4a6080;margin-top:4px">Upload to ImgBB → Use as Logo / Show Image / Overlay</div>
+          </div>
+          <div id="uploadProgress" style="display:none;margin-top:10px;text-align:center;color:var(--gold);font-family:'Orbitron',sans-serif;font-size:12px">UPLOADING...</div>
+          <div class="img-gallery" id="imgGallery"></div>
+          <div class="btn-row">
+            <button class="btn btn-outline btn-sm" onclick="clearImages()">🗑 CLEAR ALL</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEMPLATES TAB -->
+    <div class="tab-panel" id="tab-templates">
+      <div class="panel">
+        <div class="panel-head">✨ STREAM TEMPLATES</div>
+        <div class="panel-body">
+          <div style="color:#6080a0;font-size:13px;margin-bottom:12px">Click a template to instantly apply its overlay style</div>
+          <div class="templates-grid" id="templatesGrid">
+            <!-- Generated by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OUTPUT TAB -->
+    <div class="tab-panel" id="tab-output">
+      <div class="panel">
+        <div class="panel-head">📤 OUTPUT & M3U8 LINKS</div>
+        <div class="panel-body">
+          <div style="font-size:13px;color:#6080a0;margin-bottom:10px">Your stream runs on GitHub Actions and outputs M3U8 playable worldwide</div>
+
+          <label>Your Stream Page (Public)</label>
+          <div class="link-display">https://muaaziqbalvip.github.io/24-7/</div>
+          <button class="btn btn-outline btn-sm" onclick="copyLink('https://muaaziqbalvip.github.io/24-7/')">📋 COPY LINK</button>
+
+          <div class="divider"></div>
+
+          <label>Embed Code</label>
+          <div class="link-display" id="embedCode" style="font-size:11px">&lt;iframe src="https://muaaziqbalvip.github.io/24-7/" width="100%" height="500"&gt;&lt;/iframe&gt;</div>
+          <button class="btn btn-outline btn-sm" onclick="copyEmbed()">📋 COPY EMBED</button>
+
+          <div class="divider"></div>
+
+          <label>Firebase Database URL</label>
+          <div class="link-display">https://ramadan-2385b-default-rtdb.firebaseio.com</div>
+
+          <div class="divider"></div>
+
+          <div class="field">
+            <label>Custom RTMP Output (Optional)</label>
+            <input type="url" id="rtmpOutput" placeholder="rtmp://your-server/live/key" oninput="saveConfig()">
+          </div>
+
+          <button class="btn btn-primary btn-full" onclick="applyAll()">✅ SAVE OUTPUT CONFIG</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT PANEL - Monitor -->
+  <div class="right-panel">
+    <div class="right-head">📊 LIVE MONITOR</div>
+
+    <!-- Status Card -->
+    <div class="status-card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-family:'Orbitron',sans-serif;font-size:11px;color:#6080a0;letter-spacing:1px">WORKFLOW STATUS</div>
+        <div id="statusBadge" class="status-indicator status-loading">...</div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-item">
+          <span class="stat-val" id="statLoop">-</span>
+          <div class="stat-label">Loop #</div>
+        </div>
+        <div class="stat-item">
+          <span class="stat-val" id="statUptime">-</span>
+          <div class="stat-label">Uptime</div>
+        </div>
+        <div class="stat-item">
+          <span class="stat-val" id="statBitrate">-</span>
+          <div class="stat-label">Bitrate</div>
+        </div>
+        <div class="stat-item">
+          <span class="stat-val" id="statRes">-</span>
+          <div class="stat-label">Resolution</div>
+        </div>
+      </div>
+      <div id="statusMessage" style="margin-top:8px;font-size:12px;color:#4a6080;font-style:italic">Connecting to Firebase...</div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div style="padding:0 12px 12px">
+      <div style="font-family:'Orbitron',sans-serif;font-size:10px;color:#6080a0;letter-spacing:2px;margin-bottom:8px">QUICK ACTIONS</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <button class="btn btn-danger" onclick="sendCommand('stop')">⏹ STOP</button>
+        <button class="btn btn-success" onclick="applyAll()">▶ GO LIVE</button>
+        <button class="btn btn-warning" onclick="sendCommand('restart')">🔄 RESTART</button>
+        <button class="btn btn-outline" onclick="sendCommand('test')">🧪 TEST</button>
+      </div>
+    </div>
+
+    <!-- Current Config -->
+    <div style="margin:0 12px 12px">
+      <div style="font-family:'Orbitron',sans-serif;font-size:10px;color:#6080a0;letter-spacing:2px;margin-bottom:8px">CURRENT CONFIG</div>
+      <div class="panel">
+        <div class="panel-body" style="padding:10px">
+          <div id="configPreview" style="font-size:11px;color:#6080a0;font-family:'Courier New',monospace;line-height:1.6">
+            Loading...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div style="padding:0 12px;font-family:'Orbitron',sans-serif;font-size:10px;color:#6080a0;letter-spacing:2px;margin-bottom:8px">SYSTEM LOG</div>
+    <div class="log-container" id="logContainer">
+      <div class="log-line log-info">[INIT] Control Room starting...</div>
+    </div>
+    <div style="padding:8px 12px">
+      <button class="btn btn-outline btn-sm" onclick="clearLog()">🗑 CLEAR LOG</button>
+    </div>
+
+    <!-- Schedule preview -->
+    <div style="padding:0 12px;font-family:'Orbitron',sans-serif;font-size:10px;color:#6080a0;letter-spacing:2px;margin-bottom:8px;margin-top:8px">UPCOMING SHOWS</div>
+    <div id="upcomingShows" style="padding:0 12px 12px">
+      <div style="font-size:12px;color:#4a6080">No scheduled shows</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">✅ Saved!</div>
+
+<script>
+// ========== FIREBASE INIT ==========
+const firebaseConfig = {
+  apiKey: "AIzaSyBbnU8DkthpYQMHOLLyj6M0cc05qXfjMcw",
+  authDomain: "ramadan-2385b.firebaseapp.com",
+  databaseURL: "https://ramadan-2385b-default-rtdb.firebaseio.com",
+  projectId: "ramadan-2385b",
+  storageBucket: "ramadan-2385b.firebasestorage.app",
+  messagingSenderId: "882828936310",
+  appId: "1:882828936310:web:7f97b921031fe130fe4b57"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ========== STATE ==========
+let config = {
+  enabled: true,
+  source_url: '',
+  resolution: '1280x720',
+  bitrate: '2500k',
+  show_ticker: true,
+  ticker_text: 'LIVE BROADCAST • WELCOME TO THE STREAM •',
+  ticker_position: 'bottom',
+  ticker_speed: 100,
+  ticker_color: '#ffffff',
+  ticker_bg: '#000000',
+  show_clock: true,
+  show_date: true,
+  clock_timezone: 'UTC',
+  clock_position: 'top-right',
+  show_logo: false,
+  logo_url: '',
+  logo_position: 'top-left',
+  logo_size: 120,
+  logo_opacity: 90,
+  show_text_box: false,
+  custom_text: '',
+  text_box_position: 'center',
+  audio_volume: 1.0,
+  audio_pitch: 1.0,
+  audio_eq: 'normal',
+  bg_music_url: '',
+  bg_music_vol: 0.3,
+  mute_stream: false,
+  schedule_enabled: false,
+  schedule: [],
+  output_url: '',
+  template: 'default'
+};
+
+let schedule = [];
+let images = JSON.parse(localStorage.getItem('streamx_images') || '[]');
+let streamStartTime = Date.now();
+let isLive = true;
+
+// ========== CLOCK ==========
+function updateClocks() {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-US', {hour12: document.getElementById('clock12h').checked});
+  const dateStr = now.toLocaleDateString('en-US', {day:'2-digit', month:'short', year:'numeric'});
+  document.getElementById('previewClock').textContent = timeStr;
+  document.getElementById('previewDate').textContent = dateStr;
+  document.getElementById('headerClock').textContent = timeStr;
+}
+
+setInterval(updateClocks, 1000);
+updateClocks();
+
+// ========== TABS ==========
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ========== FIREBASE LISTENERS ==========
+db.ref('stream_status').on('value', snap => {
+  const data = snap.val();
+  if (!data) return;
+
+  const status = data.status || 'unknown';
+  const badge = document.getElementById('statusBadge');
+  const wfStatus = document.getElementById('workflowStatus');
+
+  if (status === 'live') {
+    badge.className = 'status-indicator status-live';
+    badge.textContent = 'LIVE';
+    wfStatus.className = 'status-indicator status-live';
+    wfStatus.textContent = 'LIVE';
+  } else if (status === 'restarting' || status === 'starting') {
+    badge.className = 'status-indicator status-loading';
+    badge.textContent = status.toUpperCase();
+    wfStatus.className = 'status-indicator status-loading';
+    wfStatus.textContent = 'STARTING';
+  } else {
+    badge.className = 'status-indicator status-offline';
+    badge.textContent = status.toUpperCase();
+    wfStatus.className = 'status-indicator status-offline';
+    wfStatus.textContent = 'OFFLINE';
+  }
+
+  document.getElementById('statLoop').textContent = data.loop || '-';
+  document.getElementById('statusMessage').textContent = data.message || '';
+  addLog(status === 'live' ? 'success' : 'info', `[${status.toUpperCase()}] ${data.message || ''}`);
+});
+
+// ========== SAVE CONFIG TO FIREBASE ==========
+function saveConfig() {
+  config.source_url = document.getElementById('sourceUrl').value;
+  config.resolution = document.getElementById('resolution').value;
+  config.bitrate = document.getElementById('bitrate').value;
+  config.show_ticker = document.getElementById('showTicker').checked;
+  config.ticker_text = document.getElementById('tickerTextInput').value;
+  config.audio_volume = parseFloat(document.getElementById('audioVolume').value);
+  config.audio_pitch = parseFloat(document.getElementById('audioPitch').value);
+  config.show_clock = document.getElementById('showClock').checked;
+  config.show_date = document.getElementById('showDate').checked;
+  config.clock_timezone = document.getElementById('clockTimezone').value;
+  config.show_logo = document.getElementById('showLogo').checked;
+  config.logo_url = document.getElementById('logoUrl').value;
+  config.logo_size = parseInt(document.getElementById('logoSize').value);
+  config.show_text_box = document.getElementById('showTextBox').checked;
+  config.custom_text = document.getElementById('customTextBox').value;
+  config.mute_stream = document.getElementById('muteStream').checked;
+  config.schedule_enabled = document.getElementById('scheduleEnabled').checked;
+  config.schedule = schedule;
+  config.ticker_speed = parseInt(document.getElementById('tickerSpeed').value);
+  config.enabled = isLive;
+
+  db.ref('stream_config').set(config).then(() => {
+    addLog('success', '[FIREBASE] Config saved to database');
+    updateConfigPreview();
+  }).catch(err => {
+    addLog('error', '[FIREBASE] Error: ' + err.message);
+  });
+}
+
+function applyAll() {
+  isLive = true;
+  document.getElementById('masterStop').style.display = '';
+  document.getElementById('masterStart').style.display = 'none';
+  saveConfig();
+  showToast('✅ Applied & Sent to Stream Engine!');
+  updatePreviewOverlays();
+}
+
+// ========== STREAM CONTROL ==========
+function toggleStream() {
+  isLive = false;
+  document.getElementById('masterStop').style.display = 'none';
+  document.getElementById('masterStart').style.display = '';
+  config.enabled = false;
+  db.ref('stream_config').update({enabled: false});
+  addLog('warn', '[CONTROL] Stream paused');
+  showToast('⏸ Stream Paused');
+}
+
+function sendCommand(cmd) {
+  db.ref('stream_command').set({command: cmd, timestamp: Date.now()});
+  addLog('info', '[CMD] Sent command: ' + cmd);
+  showToast('📡 Command sent: ' + cmd.toUpperCase());
+  if (cmd === 'stop') toggleStream();
+  else if (cmd === 'restart' || cmd === 'test') applyAll();
+}
+
+// ========== TICKER ==========
+function updateTicker() {
+  const text = document.getElementById('tickerTextInput').value;
+  document.getElementById('tickerText').textContent = text + '   •   ' + text + '   •   ';
+  const visible = document.getElementById('showTicker').checked;
+  document.getElementById('tickerPreview').style.display = visible ? 'flex' : 'none';
+  saveConfig();
+}
+
+function updateTickerSpeed(el) {
+  document.getElementById('tickerSpeedVal').textContent = el.value;
+  const speed = 20 + (200 - el.value) / 10;
+  document.querySelector('.ticker-content').style.animationDuration = speed + 's';
+  saveConfig();
+}
+
+function setTickerPos(pos, el) {
+  document.querySelectorAll('.pos-grid .pos-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  config.ticker_position = pos;
+  const tp = document.getElementById('tickerPreview');
+  tp.style.bottom = pos === 'bottom' ? '0' : 'auto';
+  tp.style.top = pos === 'top' ? '0' : 'auto';
+  saveConfig();
+}
+
+// ========== AUDIO ==========
+function updateAudio(el, valId) {
+  document.getElementById(valId).textContent = parseFloat(el.value).toFixed(1) + 'x';
+  saveConfig();
+}
+
+function testAudio() {
+  const ctx = new AudioContext();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.frequency.value = 440;
+  gain.gain.value = 0.3;
+  osc.start();
+  osc.stop(ctx.currentTime + 0.5);
+  addLog('info', '[AUDIO] Test tone played');
+}
+
+// ========== SOURCE ==========
+function setSource(url) {
+  document.getElementById('sourceUrl').value = url;
+  if (url) {
+    loadPreviewStream(url);
+  }
+}
+
+function promptCustom() {
+  const url = prompt('Enter YouTube URL or any video URL:');
+  if (url) setSource(url);
+}
+
+// ========== HLS PREVIEW ==========
+function loadPreviewStream(url) {
+  const video = document.getElementById('previewVideo');
+  if (!url) return;
+
+  if (Hls.isSupported() && url.includes('.m3u8')) {
+    const hls = new Hls();
+    hls.loadSource(url);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      video.play().catch(()=>{});
+      addLog('success', '[HLS] Stream loaded: ' + url.substring(0,50));
+    });
+  } else {
+    video.src = url;
+    video.play().catch(()=>{});
+  }
+}
+
+function togglePreview() {
+  const url = document.getElementById('sourceUrl').value;
+  if (url) loadPreviewStream(url);
+}
+
+// ========== POSITIONS ==========
+function setPos(type, pos, el) {
+  const parent = el.closest('.pos-grid');
+  parent.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  if (type === 'clock') config.clock_position = pos;
+  if (type === 'logo') config.logo_position = pos;
+  if (type === 'textbox') config.text_box_position = pos;
+  saveConfig();
+}
+
+// ========== SCHEDULE ==========
+function addScheduleItem() {
+  const name = document.getElementById('showName').value;
+  const start = document.getElementById('showStart').value;
+  const end = document.getElementById('showEnd').value;
+  const url = document.getElementById('showUrl').value;
+  const image = document.getElementById('showImage').value;
+  const days = Array.from(document.querySelectorAll('#tab-schedule input[type=checkbox][value]'))
+    .filter(c => c.checked).map(c => c.value);
+
+  if (!name || !start || !end || !url) {
+    showToast('⚠️ Fill all fields');
+    return;
+  }
+
+  schedule.push({id: Date.now(), name, start, end, url, image, days});
+  renderSchedule();
+  saveConfig();
+  showToast('📅 Show added to schedule');
+
+  // Clear
+  document.getElementById('showName').value = '';
+  document.getElementById('showUrl').value = '';
+  document.getElementById('showImage').value = '';
+}
+
+function renderSchedule() {
+  const list = document.getElementById('scheduleList');
+  const upcoming = document.getElementById('upcomingShows');
+
+  list.innerHTML = '';
+  upcoming.innerHTML = '';
+
+  if (!schedule.length) {
+    upcoming.innerHTML = '<div style="font-size:12px;color:#4a6080">No scheduled shows</div>';
+    return;
+  }
+
+  schedule.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'schedule-item';
+    div.innerHTML = `
+      <div class="si-title">${item.name}</div>
+      <div class="si-time">⏰ ${item.start} - ${item.end} | ${(item.days||[]).join(', ') || 'Daily'}</div>
+      <div class="si-url">${item.url}</div>
+      <button class="si-del" onclick="deleteSchedule(${i})">×</button>
+    `;
+    list.appendChild(div);
+
+    // Upcoming
+    const up = document.createElement('div');
+    up.className = 'schedule-item';
+    up.style.margin = '0 0 6px';
+    up.innerHTML = `<div class="si-title" style="font-size:13px">${item.name}</div><div class="si-time">${item.start} - ${item.end}</div>`;
+    upcoming.appendChild(up);
+  });
+}
+
+function deleteSchedule(i) {
+  schedule.splice(i, 1);
+  renderSchedule();
+  saveConfig();
+}
+
+// ========== IMAGES ==========
+const IMGBB_KEY = '6bdb23b28e7581721b28e46ce313308b';
+
+async function uploadImage(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  document.getElementById('uploadProgress').style.display = 'block';
+
+  const formData = new FormData();
+  formData.append('image', file);
+
+  try {
+    const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      const url = data.data.url;
+      images.unshift(url);
+      localStorage.setItem('streamx_images', JSON.stringify(images));
+      renderImages();
+      showToast('🖼 Image uploaded!');
+      addLog('success', '[IMGBB] Image uploaded: ' + url.substring(0,50));
+    }
+  } catch (err) {
+    addLog('error', '[IMGBB] Upload failed: ' + err.message);
+  }
+
+  document.getElementById('uploadProgress').style.display = 'none';
+  input.value = '';
+}
+
+function renderImages() {
+  const gallery = document.getElementById('imgGallery');
+  gallery.innerHTML = '';
+  images.forEach(url => {
+    const div = document.createElement('div');
+    div.className = 'img-thumb';
+    div.innerHTML = `
+      <img src="${url}" loading="lazy">
+      <div class="use-btn" onclick="useImage('${url}')">USE</div>
+    `;
+    gallery.appendChild(div);
+  });
+}
+
+function useImage(url) {
+  document.getElementById('logoUrl').value = url;
+  document.getElementById('showLogo').checked = true;
+  switchTab('overlays');
+  document.querySelectorAll('.tab')[1].click();
+  showToast('🖼 Image set as logo!');
+}
+
+function clearImages() {
+  if (confirm('Clear all images?')) {
+    images = [];
+    localStorage.removeItem('streamx_images');
+    renderImages();
+  }
+}
+
+// ========== TEMPLATES ==========
+const templates = [
+  { name: 'News', ticker_bg: '#cc0000', ticker_color: '#ffffff', ticker_text: 'BREAKING NEWS • LATEST UPDATES •', show_clock: true },
+  { name: 'Sports', ticker_bg: '#00aa44', ticker_color: '#ffffff', ticker_text: 'LIVE SPORTS • FULL COVERAGE •', show_clock: true },
+  { name: 'Music', ticker_bg: '#8800cc', ticker_color: '#ffff00', ticker_text: '🎵 NOW PLAYING • MUSIC CHANNEL •', show_clock: false },
+  { name: 'Islamic', ticker_bg: '#006600', ticker_color: '#ffd700', ticker_text: 'بسم اللہ الرحمن الرحیم • اسلامی چینل •', show_clock: true },
+  { name: 'Cinema', ticker_bg: '#111111', ticker_color: '#FFD700', ticker_text: '🎬 CINEMA CHANNEL • NOW SHOWING •', show_clock: false },
+  { name: 'Fashion', ticker_bg: '#ff69b4', ticker_color: '#ffffff', ticker_text: '✨ FASHION TV • LATEST TRENDS •', show_clock: true },
+  { name: 'Tech', ticker_bg: '#003388', ticker_color: '#00ffff', ticker_text: '💻 TECH CHANNEL • LATEST NEWS •', show_clock: true },
+  { name: 'Kids', ticker_bg: '#ff8800', ticker_color: '#ffffff', ticker_text: '🌟 KIDS ZONE • FUN & LEARNING •', show_clock: false },
+  { name: 'Minimal', ticker_bg: '#000000', ticker_color: '#ffffff', ticker_text: 'LIVE • ON AIR •', show_clock: true },
+];
+
+function renderTemplates() {
+  const grid = document.getElementById('templatesGrid');
+  templates.forEach((t, i) => {
+    const card = document.createElement('div');
+    card.className = 'template-card';
+    card.onclick = () => applyTemplate(t, card);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 320;
+    canvas.height = 180;
+    const ctx = canvas.getContext('2d');
+
+    // Background
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, 320, 180);
+
+    // Ticker
+    ctx.fillStyle = t.ticker_bg;
+    ctx.fillRect(0, 150, 320, 30);
+    ctx.fillStyle = t.ticker_color;
+    ctx.font = '11px Arial';
+    ctx.fillText(t.name + ' Style', 8, 170);
+
+    // Name label
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, 0, 320, 25);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 13px Arial';
+    ctx.fillText(t.name, 8, 18);
+
+    card.appendChild(canvas);
+    grid.appendChild(card);
+  });
+}
+
+function applyTemplate(t, card) {
+  document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+
+  document.getElementById('tickerTextInput').value = t.ticker_text;
+  document.getElementById('tickerBg').value = t.ticker_bg;
+  document.getElementById('tickerColor').value = t.ticker_color;
+  document.getElementById('showClock').checked = t.show_clock;
+
+  updateTicker();
+  applyAll();
+  showToast('✨ Template "' + t.name + '" applied!');
+}
+
+// ========== OVERLAYS PREVIEW ==========
+function updatePreviewOverlays() {
+  updateTicker();
+}
+
+// ========== COLOR SYNC ==========
+function syncColor(colorId, textId) {
+  const text = document.getElementById(textId).value;
+  if (/^#[0-9A-F]{6}$/i.test(text)) {
+    document.getElementById(colorId).value = text;
+  }
+}
+
+document.getElementById('tickerBg').addEventListener('input', function() {
+  document.getElementById('tickerBgText').value = this.value;
+});
+
+// ========== CONFIG PREVIEW ==========
+function updateConfigPreview() {
+  const preview = `enabled: ${config.enabled}
+source: ${(config.source_url||'').substring(0,30)}...
+resolution: ${config.resolution}
+bitrate: ${config.bitrate}
+ticker: ${config.show_ticker}
+volume: ${config.audio_volume}x
+pitch: ${config.audio_pitch}x
+clock: ${config.show_clock}
+logo: ${config.show_logo}
+schedule: ${config.schedule_enabled}`;
+  document.getElementById('configPreview').textContent = preview;
+  document.getElementById('statBitrate').textContent = config.bitrate;
+  document.getElementById('statRes').textContent = config.resolution.split('x')[1] + 'p';
+}
+
+// ========== LOG ==========
+function addLog(type, msg) {
+  const container = document.getElementById('logContainer');
+  const div = document.createElement('div');
+  div.className = `log-line log-${type}`;
+  div.textContent = msg;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+
+  // Keep max 100 lines
+  while (container.children.length > 100) {
+    container.removeChild(container.firstChild);
+  }
+}
+
+function clearLog() {
+  document.getElementById('logContainer').innerHTML = '';
+}
+
+// ========== TOAST ==========
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ========== COPY ==========
+function copyLink(url) {
+  navigator.clipboard.writeText(url);
+  showToast('📋 Copied!');
+}
+
+function copyEmbed() {
+  const code = document.getElementById('embedCode').textContent;
+  navigator.clipboard.writeText(code);
+  showToast('📋 Embed code copied!');
+}
+
+// ========== AUDIO VISUALIZER ==========
+function setupViz() {
+  const bars = document.getElementById('vizBars');
+  for (let i = 0; i < 20; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'viz-bar';
+    const delay = (Math.random() * 0.8).toFixed(2);
+    const dur = (0.4 + Math.random() * 0.6).toFixed(2);
+    bar.style.cssText = `--d:${dur}s; animation-delay:${delay}s; height:${20+Math.random()*80}%`;
+    bars.appendChild(bar);
+  }
+}
+
+// ========== UPTIME ==========
+setInterval(() => {
+  const sec = Math.floor((Date.now() - streamStartTime) / 1000);
+  const h = Math.floor(sec / 3600).toString().padStart(2,'0');
+  const m = Math.floor((sec % 3600) / 60).toString().padStart(2,'0');
+  const s = (sec % 60).toString().padStart(2,'0');
+  document.getElementById('statUptime').textContent = h + ':' + m + ':' + s;
+}, 1000);
+
+// ========== INIT ==========
+function init() {
+  renderImages();
+  renderSchedule();
+  renderTemplates();
+  setupViz();
+  updateConfigPreview();
+  addLog('success', '[INIT] Control Room loaded ✅');
+  addLog('info', '[FIREBASE] Connected to: ramadan-2385b');
+
+  // Load existing config from Firebase
+  db.ref('stream_config').once('value').then(snap => {
+    const data = snap.val();
+    if (data) {
+      config = {...config, ...data};
+      // Apply to UI
+      if (data.source_url) document.getElementById('sourceUrl').value = data.source_url;
+      if (data.resolution) document.getElementById('resolution').value = data.resolution;
+      if (data.bitrate) document.getElementById('bitrate').value = data.bitrate;
+      if (data.ticker_text) document.getElementById('tickerTextInput').value = data.ticker_text;
+      if (data.schedule) { schedule = data.schedule; renderSchedule(); }
+      updateTicker();
+      updateConfigPreview();
+      addLog('success', '[FIREBASE] Existing config loaded');
+    }
+  });
+
+  // Load test stream in preview
+  setTimeout(() => {
+    loadPreviewStream('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8');
+  }, 1000);
+}
+
+init();
+</script>
+</body>
+</html>

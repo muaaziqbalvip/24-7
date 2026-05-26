@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Stream</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#000;
+  color:#fff;
+  font-family:'Rajdhani',sans-serif;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+
+.top-bar {
+  background:linear-gradient(90deg,#0a0e1a,#0d1525);
+  padding:10px 20px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:2px solid #1e2d45;
+  flex-shrink:0;
+}
+
+.channel-name {
+  font-family:'Orbitron',sans-serif;
+  font-size:18px;
+  color:#00aaff;
+  letter-spacing:2px;
+  text-shadow:0 0 15px rgba(0,170,255,0.5);
+}
+
+.live-ind {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  background:rgba(255,34,68,0.15);
+  border:1px solid #ff2244;
+  padding:5px 14px;
+  border-radius:3px;
+  font-family:'Orbitron',sans-serif;
+  font-size:12px;
+  color:#ff2244;
+}
+
+.live-dot {
+  width:7px;height:7px;
+  background:#ff2244;
+  border-radius:50%;
+  animation:pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%,100%{opacity:1;transform:scale(1);}
+  50%{opacity:0.3;transform:scale(0.7);}
+}
+
+.top-clock {
+  font-family:'Orbitron',sans-serif;
+  font-size:14px;
+  color:#ffd700;
+}
+
+/* VIDEO CONTAINER */
+.video-wrap {
+  flex:1;
+  position:relative;
+  background:#000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+video {
+  width:100%;
+  height:100%;
+  max-height:calc(100vh - 100px);
+  object-fit:contain;
+}
+
+/* OVERLAYS */
+.overlay {
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+}
+
+.ov-live {
+  position:absolute;
+  top:12px;
+  left:12px;
+  background:#cc0000;
+  padding:4px 12px;
+  border-radius:2px;
+  font-family:'Orbitron',sans-serif;
+  font-size:13px;
+  font-weight:700;
+  color:#fff;
+}
+
+.ov-clock {
+  position:absolute;
+  top:12px;
+  right:12px;
+  background:rgba(0,0,0,0.8);
+  padding:5px 12px;
+  border-radius:3px;
+  font-family:'Orbitron',sans-serif;
+  font-size:18px;
+  color:#fff;
+  text-align:right;
+}
+
+.ov-date {
+  position:absolute;
+  top:48px;
+  right:12px;
+  background:rgba(0,0,0,0.65);
+  padding:3px 10px;
+  border-radius:3px;
+  font-size:13px;
+  color:#ffd700;
+}
+
+.ov-logo {
+  position:absolute;
+  top:10px;
+  left:10px;
+  max-width:130px;
+  max-height:70px;
+  object-fit:contain;
+  display:none;
+}
+
+.ov-textbox {
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  background:rgba(0,0,0,0.7);
+  color:#fff;
+  padding:8px 18px;
+  border-radius:5px;
+  font-family:'Orbitron',sans-serif;
+  font-size:20px;
+  display:none;
+  text-align:center;
+}
+
+/* TICKER */
+.ticker-bar {
+  position:absolute;
+  bottom:0;
+  left:0;
+  right:0;
+  background:rgba(0,0,0,0.9);
+  padding:8px 0;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+}
+
+.ticker-inner {
+  white-space:nowrap;
+  animation:tick 30s linear infinite;
+  font-size:15px;
+  color:#fff;
+  padding-left:100%;
+}
+
+@keyframes tick {
+  0%{transform:translateX(0);}
+  100%{transform:translateX(-100%);}
+}
+
+/* BOTTOM BAR */
+.bottom-bar {
+  background:#0a0e1a;
+  border-top:1px solid #1e2d45;
+  padding:8px 20px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-shrink:0;
+}
+
+.bottom-links {
+  display:flex;
+  gap:16px;
+  font-size:13px;
+  color:#4a6080;
+}
+
+.bottom-links a {
+  color:#00aaff;
+  text-decoration:none;
+}
+
+.bottom-links a:hover { color:#33bbff; }
+
+.viewer-count {
+  font-family:'Orbitron',sans-serif;
+  font-size:12px;
+  color:#ffd700;
+}
+
+/* Loading screen */
+.loading-screen {
+  position:absolute;
+  inset:0;
+  background:#000;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  z-index:10;
+}
+
+.loading-logo {
+  font-family:'Orbitron',sans-serif;
+  font-size:32px;
+  color:#00aaff;
+  margin-bottom:16px;
+  text-shadow:0 0 30px rgba(0,170,255,0.8);
+}
+
+.loading-bar {
+  width:200px;
+  height:3px;
+  background:#1e2d45;
+  border-radius:2px;
+  overflow:hidden;
+}
+
+.loading-fill {
+  height:100%;
+  background:#00aaff;
+  border-radius:2px;
+  animation:load 2s ease infinite;
+}
+
+@keyframes load {
+  0%{width:0}
+  50%{width:80%}
+  100%{width:100%}
+}
+
+.loading-text {
+  margin-top:12px;
+  font-size:13px;
+  color:#4a6080;
+  font-family:'Orbitron',sans-serif;
+  letter-spacing:2px;
+}
+
+/* Offline screen */
+.offline-screen {
+  position:absolute;
+  inset:0;
+  background:#000;
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  z-index:9;
+}
+
+.offline-icon { font-size:60px; margin-bottom:16px; }
+.offline-title {
+  font-family:'Orbitron',sans-serif;
+  font-size:22px;
+  color:#ff2244;
+  margin-bottom:8px;
+}
+
+.offline-msg { font-size:14px; color:#4a6080; margin-bottom:20px; }
+.retry-btn {
+  background:#00aaff;
+  color:#000;
+  border:none;
+  padding:10px 24px;
+  border-radius:5px;
+  font-family:'Orbitron',sans-serif;
+  font-size:12px;
+  cursor:pointer;
+  font-weight:700;
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="channel-name" id="channelName">LIVE TV</div>
+  <div class="live-ind">
+    <div class="live-dot"></div>
+    <span id="liveLabel">LIVE</span>
+  </div>
+  <div class="top-clock" id="topClock">00:00:00</div>
+</div>
+
+<!-- VIDEO WRAP -->
+<div class="video-wrap">
+
+  <!-- Loading -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="loading-logo">◉ LIVE</div>
+    <div class="loading-bar"><div class="loading-fill"></div></div>
+    <div class="loading-text">CONNECTING TO STREAM...</div>
+  </div>
+
+  <!-- Offline -->
+  <div class="offline-screen" id="offlineScreen">
+    <div class="offline-icon">📡</div>
+    <div class="offline-title">STREAM OFFLINE</div>
+    <div class="offline-msg">The stream is currently offline. Please try again shortly.</div>
+    <button class="retry-btn" onclick="retryStream()">↻ RETRY</button>
+  </div>
+
+  <!-- Main Video -->
+  <video id="liveVideo" muted autoplay playsinline></video>
+
+  <!-- Overlays -->
+  <div class="overlay">
+    <div class="ov-live" id="ovLive">● LIVE</div>
+    <div class="ov-clock" id="ovClock">00:00:00</div>
+    <div class="ov-date" id="ovDate">01 Jan 2025</div>
+    <img class="ov-logo" id="ovLogo" src="" alt="">
+    <div class="ov-textbox" id="ovTextBox"></div>
+
+    <!-- Ticker -->
+    <div class="ticker-bar" id="tickerBar" style="display:none">
+      <div class="ticker-inner" id="tickerInner">LIVE BROADCAST •</div>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM BAR -->
+<div class="bottom-bar">
+  <div class="bottom-links">
+    <a href="control-room.html">🎛 Control Room</a>
+    <a href="#" onclick="toggleMute()">🔊 <span id="muteLabel">Mute</span></a>
+    <a href="#" onclick="toggleFullscreen()">⛶ Fullscreen</a>
+  </div>
+  <div class="viewer-count" id="viewerCount">👁 LIVE</div>
+</div>
+
+<script>
+// Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyBbnU8DkthpYQMHOLLyj6M0cc05qXfjMcw",
+  authDomain: "ramadan-2385b.firebaseapp.com",
+  databaseURL: "https://ramadan-2385b-default-rtdb.firebaseio.com",
+  projectId: "ramadan-2385b",
+  storageBucket: "ramadan-2385b.firebasestorage.app",
+  messagingSenderId: "882828936310",
+  appId: "1:882828936310:web:7f97b921031fe130fe4b57"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let currentUrl = '';
+let hlsInstance = null;
+let muted = true;
+
+// Clock
+function updateClock() {
+  const now = new Date();
+  const t = now.toLocaleTimeString();
+  const d = now.toLocaleDateString('en-US', {day:'2-digit', month:'short', year:'numeric'});
+  document.getElementById('ovClock').textContent = t;
+  document.getElementById('ovDate').textContent = d;
+  document.getElementById('topClock').textContent = t;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// Load stream
+function loadStream(url) {
+  if (!url || url === currentUrl) return;
+  currentUrl = url;
+
+  const video = document.getElementById('liveVideo');
+  document.getElementById('loadingScreen').style.display = 'flex';
+  document.getElementById('offlineScreen').style.display = 'none';
+
+  if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+
+  if (Hls.isSupported() && (url.includes('.m3u8') || url.includes('m3u'))) {
+    hlsInstance = new Hls({
+      liveSyncDurationCount: 3,
+      liveMaxLatencyDurationCount: 10,
+      enableWorker: true
+    });
+    hlsInstance.loadSource(url);
+    hlsInstance.attachMedia(video);
+    hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+      video.play().catch(() => {});
+      document.getElementById('loadingScreen').style.display = 'none';
+    });
+    hlsInstance.on(Hls.Events.ERROR, (e, data) => {
+      if (data.fatal) showOffline();
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl') && url.includes('.m3u8')) {
+    video.src = url;
+    video.addEventListener('loadedmetadata', () => {
+      video.play().catch(()=>{});
+      document.getElementById('loadingScreen').style.display = 'none';
+    });
+  } else {
+    video.src = url;
+    video.addEventListener('canplay', () => {
+      video.play().catch(()=>{});
+      document.getElementById('loadingScreen').style.display = 'none';
+    });
+    video.onerror = showOffline;
+  }
+}
+
+function showOffline() {
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('offlineScreen').style.display = 'flex';
+}
+
+function retryStream() {
+  currentUrl = '';
+  loadStream(document.getElementById('liveVideo').src || '');
+}
+
+// Apply config from Firebase
+function applyConfig(config) {
+  if (!config) return;
+
+  // Channel name
+  if (config.channel_name) document.getElementById('channelName').textContent = config.channel_name;
+
+  // Ticker
+  if (config.show_ticker) {
+    document.getElementById('tickerBar').style.display = 'flex';
+    const text = config.ticker_text || 'LIVE BROADCAST •';
+    document.getElementById('tickerInner').textContent = text + '   •   ' + text + '   •   ';
+    document.getElementById('tickerBar').style.background = (config.ticker_bg || 'rgba(0,0,0,0.9)');
+    document.getElementById('tickerInner').style.color = config.ticker_color || '#fff';
+    if (config.ticker_speed) {
+      const speed = Math.max(5, 30 - config.ticker_speed / 10);
+      document.querySelector('.ticker-inner').style.animationDuration = speed + 's';
+    }
+    if (config.ticker_position === 'top') {
+      document.getElementById('tickerBar').style.bottom = 'auto';
+      document.getElementById('tickerBar').style.top = '0';
+    }
+  } else {
+    document.getElementById('tickerBar').style.display = 'none';
+  }
+
+  // Clock
+  document.getElementById('ovClock').style.display = config.show_clock ? '' : 'none';
+  document.getElementById('ovDate').style.display = config.show_date ? '' : 'none';
+
+  // Logo
+  if (config.show_logo && config.logo_url) {
+    const logo = document.getElementById('ovLogo');
+    logo.src = config.logo_url;
+    logo.style.display = 'block';
+    const size = config.logo_size || 120;
+    logo.style.maxWidth = size + 'px';
+    logo.style.opacity = (config.logo_opacity || 90) / 100;
+    // Position
+    const pos = config.logo_position || 'top-left';
+    logo.style.top = pos.includes('top') ? '10px' : 'auto';
+    logo.style.bottom = pos.includes('bottom') ? '60px' : 'auto';
+    logo.style.left = pos.includes('left') ? '10px' : 'auto';
+    logo.style.right = pos.includes('right') ? '10px' : 'auto';
+  } else {
+    document.getElementById('ovLogo').style.display = 'none';
+  }
+
+  // Custom text
+  if (config.show_text_box && config.custom_text) {
+    const tb = document.getElementById('ovTextBox');
+    tb.textContent = config.custom_text;
+    tb.style.display = 'block';
+  } else {
+    document.getElementById('ovTextBox').style.display = 'none';
+  }
+
+  // Source
+  if (config.source_url && config.enabled !== false) {
+    loadStream(config.source_url);
+  } else if (config.enabled === false) {
+    showOffline();
+  }
+
+  // Mute
+  if (config.mute_stream) {
+    document.getElementById('liveVideo').muted = true;
+  }
+}
+
+// Firebase listener - realtime updates
+db.ref('stream_config').on('value', snap => {
+  const config = snap.val();
+  if (config) applyConfig(config);
+});
+
+// Load test stream if no config
+setTimeout(() => {
+  if (!currentUrl) {
+    loadStream('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8');
+  }
+}, 3000);
+
+// Toggle mute
+function toggleMute() {
+  const v = document.getElementById('liveVideo');
+  muted = !muted;
+  v.muted = muted;
+  document.getElementById('muteLabel').textContent = muted ? 'Unmute' : 'Mute';
+}
+
+// Fullscreen
+function toggleFullscreen() {
+  const wrap = document.querySelector('.video-wrap');
+  if (!document.fullscreenElement) wrap.requestFullscreen();
+  else document.exitFullscreen();
+}
+</script>
+</body>
+</html>
