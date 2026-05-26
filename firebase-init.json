@@ -1,0 +1,47 @@
+{
+  "stream_config": {
+    "enabled": true,
+    "source_url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+    "resolution": "1280x720",
+    "bitrate": "2500k",
+    "channel_name": "LIVE TV",
+    "show_ticker": true,
+    "ticker_text": "LIVE BROADCAST • WELCOME TO OUR CHANNEL • STAY TUNED •",
+    "ticker_position": "bottom",
+    "ticker_speed": 100,
+    "ticker_color": "#ffffff",
+    "ticker_bg": "#000000",
+    "show_clock": true,
+    "show_date": true,
+    "clock_timezone": "Asia/Karachi",
+    "clock_position": "top-right",
+    "show_logo": false,
+    "logo_url": "",
+    "logo_position": "top-left",
+    "logo_size": 120,
+    "logo_opacity": 90,
+    "show_text_box": false,
+    "custom_text": "",
+    "text_box_position": "center",
+    "audio_volume": 1.0,
+    "audio_pitch": 1.0,
+    "audio_eq": "normal",
+    "bg_music_url": "",
+    "bg_music_vol": 0.3,
+    "mute_stream": false,
+    "schedule_enabled": false,
+    "schedule": [],
+    "output_url": "",
+    "template": "default"
+  },
+  "stream_status": {
+    "status": "offline",
+    "message": "Waiting for workflow to start",
+    "timestamp": "2025-01-01T00:00:00Z",
+    "loop": 0
+  },
+  "stream_command": {
+    "command": "none",
+    "timestamp": 0
+  }
+}

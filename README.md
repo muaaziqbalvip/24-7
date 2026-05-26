@@ -1,109 +1,78 @@
-# 📺 MiTV 24/7 Live Stream System
+# 🎬 StreamX - 24/7 Live Stream System
 
-## Files
-| File | Purpose |
-|------|---------|
-| `control-panel.html` | Main control panel (Firebase connected) |
-| `stream-overlay.html` | Stream preview overlay |
-| `stream-engine.py` | GitHub Actions streaming engine |
-| `.github/workflows/stream.yml` | 24/7 auto-restart workflow |
-
----
-
-## ⚡ Setup Guide (Step by Step)
-
-### STEP 1 — GitHub Repo
-1. Create new GitHub repo (e.g. `your-name/mitv-stream`)
-2. Upload ALL these files to the repo root
-3. Make sure `.github/workflows/stream.yml` is in correct path
-
-### STEP 2 — GitHub Secrets
-Go to: **Repo → Settings → Secrets → Actions → New repository secret**
-
-Add these 2 secrets:
-- `YOUTUBE_STREAM_KEY` → Your YouTube stream key (e.g. `xxxx-xxxx-xxxx-xxxx`)
-- `FIREBASE_KEY` → Your Firebase Database secret (optional, for private DB)
-
-### STEP 3 — YouTube Stream Key
-1. Go to YouTube Studio → Live → Stream key
-2. Copy the key
-3. Paste in GitHub Secret AND in control panel
-
-### STEP 4 — Open Control Panel
-- Open `control-panel.html` in browser
-- It connects to Firebase automatically
-- Set your video source (MP4/M3U/YouTube)
-- Set logo, ticker, settings
-- Click **START STREAM**
-
-### STEP 5 — Trigger GitHub Actions
-In control panel → Stream tab:
-- Enter your GitHub repo name (`username/repo`)
-- Enter your GitHub token (Settings → Developer Settings → Personal Access Tokens)
-- Click **🚀 Trigger GitHub Actions**
-
----
-
-## 🔄 How 24/7 Works
+## Files Structure
 ```
-GitHub Actions starts → stream-engine.py reads Firebase → 
-FFmpeg builds → streams to YouTube → 
-if crashes → auto-restart in 5s → 
-every 6 hours → GitHub cron restarts fresh
+/
+├── .github/workflows/stream.yml    ← GitHub Actions (auto-run 24/7)
+├── stream_engine.sh                ← FFmpeg stream engine
+├── public/
+│   ├── index.html                  ← Public viewer page
+│   └── control-room.html           ← Control Room (admin panel)
+├── firebase-init.json              ← Firebase DB initial data
+└── README.md
 ```
 
-Your phone can be OFF. GitHub servers run it 24/7.
+## Setup Steps
 
----
+### 1. GitHub Repository
+- Upload all files to: `https://github.com/muaaziqbalvip/24-7`
+- Enable GitHub Pages → Source: `public/` folder
+- Your stream page: `https://muaaziqbalvip.github.io/24-7/`
+- Control room: `https://muaaziqbalvip.github.io/24-7/control-room.html`
 
-## 📺 Video Sources
-
-### MP4
-Direct video file URL. Loops forever.
-```
-https://example.com/video.mp4
-```
-
-### M3U
-IPTV playlist. Enter URL + channel index.
-```
-http://server.com:8080/get.php?username=...&output=m3u
-```
-
-### YouTube
-Any YouTube video/playlist URL. yt-dlp extracts stream.
-```
-https://youtube.com/watch?v=VIDEO_ID
-https://youtube.com/playlist?list=PLAYLIST_ID
+### 2. Firebase Setup
+- Go to Firebase Console → Realtime Database
+- Import `firebase-init.json` as initial data
+- Set Database Rules to public read/write (for testing):
+```json
+{
+  "rules": {
+    ".read": true,
+    ".write": true
+  }
+}
 ```
 
----
+### 3. GitHub Actions
+- Go to your repo → Settings → Actions → General
+- Enable: "Allow all actions and reusable workflows"
+- The workflow auto-starts on push and restarts every 25 minutes
 
-## ⚙️ Overlay Features
-- **Logo**: Upload via ImgBB → 6 animations (pulse/bounce/rotate/glow/float)
-- **Ticker**: Scrolling text bar → 6 animation styles
-- **Transform**: Zoom, X/Y position, brightness, volume
-- **Audio**: Stereo/Mono/Echo/Bass Boost
-- **Branding**: Channel name, watermark, themes
+### 4. How It Works
+1. GitHub Actions runs `stream_engine.sh` 24/7
+2. FFmpeg reads your source URL (YouTube/M3U8/MP4/etc)
+3. Adds overlays: ticker, clock, logo, text
+4. Outputs to HLS format
+5. Control Room sends config to Firebase in realtime
+6. Stream engine reads Firebase config every loop
 
----
+## Control Room Features
+- 📡 **Source**: M3U8, MP4, MKV, YouTube, any URL
+- 🎨 **Overlays**: Ticker, Clock, Date, Logo, Custom Text
+- 🎵 **Audio**: Volume, Pitch, EQ, Background Music
+- 📅 **Schedule**: Time-based show switching
+- 🖼 **Images**: ImgBB upload and manage
+- ✨ **Templates**: Pre-built overlay styles
+- 📤 **Output**: Stream links and embed codes
 
-## 🔑 GitHub Token Scopes Needed
-When creating token, check: `workflow` + `repo`
+## Supported Source Types
+- ✅ M3U8 / HLS streams
+- ✅ MP4 video files  
+- ✅ MKV video files
+- ✅ MP3 audio files
+- ✅ M3U playlists
+- ✅ YouTube URLs (via yt-dlp)
+- ✅ Any direct video URL
 
----
+## Copyright Protection Features
+- Audio pitch shifting (avoids audio fingerprinting)
+- Visual overlays (changes video fingerprint)
+- Custom logos and branding
+- Custom color grading via FFmpeg filters
 
-## Firebase Structure
-```
-mitv_stream/
-  source/       → video source config
-  transform/    → zoom/position/volume
-  logo/         → logo url, position, animation
-  ticker/       → text, speed, colors
-  streamSettings/ → key, rtmp, resolution
-  branding/     → channel name, theme
-  status/       → live status, loops, uptime
-  logs/         → activity log entries
-  images/       → uploaded ImgBB URLs
-  github/       → repo info
-```
+## 24/7 Logic
+- GitHub Actions runs for up to 6 hours max per job
+- Cron schedule restarts every 25 minutes as safety
+- Stream engine loops 50 times before GitHub auto-restarts
+- Firebase stores status so control room shows real-time state
+- If stream source fails, auto-retries after 5 seconds
