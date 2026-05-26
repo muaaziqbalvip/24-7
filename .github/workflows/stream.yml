@@ -1,40 +1,80 @@
-name: MiTV 24/7 Live Stream
+name: MiTV 24/7 Live Stream Engine
 
 on:
   workflow_dispatch:
+    inputs:
+      force_restart:
+        description: 'Force restart stream'
+        required: false
+        default: 'false'
+  push:
+    branches: [ main ]
+    paths:
+      - 'stream-engine.py'
+      - 'schedule.json'
   schedule:
-    # Restart every 5 hours 50 min (GitHub Actions max is 6h)
+    # Auto-restart every 5h 55min (GitHub max is 6h)
     - cron: '0 */6 * * *'
+    - cron: '55 5,11,17,23 * * *'
 
 jobs:
   stream:
     runs-on: ubuntu-latest
     timeout-minutes: 355
+    permissions:
+      contents: write
 
     steps:
-      - name: Checkout repo
+      - name: ⬇️ Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install system dependencies
+      - name: 📦 Install system dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y ffmpeg python3-pip curl jq python3-dev
+          sudo apt-get install -y ffmpeg python3-pip curl jq wget git
+          echo "✅ System dependencies installed"
 
-      - name: Install Python dependencies
+      - name: 🐍 Install Python packages
         run: |
           pip3 install --break-system-packages yt-dlp requests || pip3 install yt-dlp requests
+          echo "✅ Python packages ready"
 
-      - name: Verify FFmpeg
-        run: ffmpeg -version | head -1
+      - name: 🌐 Install Cloudflared (Public Tunnel)
+        run: |
+          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -O /tmp/cf.deb
+          sudo dpkg -i /tmp/cf.deb
+          cloudflared --version
+          echo "✅ Cloudflared ready"
 
-      - name: Run Stream Engine
+      - name: 📋 Load Schedule
+        run: |
+          if [ -f schedule.json ]; then
+            echo "📅 Schedule file found:"
+            cat schedule.json | jq '.programs | length' | xargs -I{} echo "{} programs loaded"
+          else
+            echo "⚠️ No schedule.json — using Firebase schedule"
+          fi
+
+      - name: 🎬 Verify FFmpeg
+        run: |
+          ffmpeg -version | head -2
+          echo "✅ FFmpeg ready"
+
+      - name: 🔴 Run MiTV Stream Engine
         env:
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
-          YOUTUBE_STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RUNNER_NUMBER: ${{ github.run_number }}
         run: |
+          echo "🚀 Starting MiTV Stream Engine v3"
+          echo "🕐 Time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           python3 stream-engine.py
 
-      - name: Auto-restart notice
+      - name: 🔁 Auto-Restart Notice
         if: always()
         run: |
-          echo "Stream ended at $(date) — auto-restart via schedule cron"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "⏱️  Stream ended: $(date -u)"
+          echo "🔁 Auto-restart scheduled via cron"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
