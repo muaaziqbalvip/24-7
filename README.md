@@ -1,80 +1,109 @@
-# 24-7
-THIS REPOSTRI AS A SOFTWER LIVE YOUTUBE STREAM.
-# 📺 MiTV Network - 24/7 Professional Live Stream Engine
-### 🚀 Developed by: Muaaz Iqbal | ICS Computer Science 
-#### 🏛️ Institution: Govt Islamia Graduate College
+# 📺 MiTV 24/7 Live Stream System
+
+## Files
+| File | Purpose |
+|------|---------|
+| `control-panel.html` | Main control panel (Firebase connected) |
+| `stream-overlay.html` | Stream preview overlay |
+| `stream-engine.py` | GitHub Actions streaming engine |
+| `.github/workflows/stream.yml` | 24/7 auto-restart workflow |
 
 ---
 
-## 🌟 Project Overview
-**MiTV Network** ek advance, cloud-based broadcasting system hai jo **GitHub Actions** ki taqat ko istemal karte hue YouTube par **24/7 Live Streaming** faraham karta hai. Yeh system sirf video nahi chalata, balkay ye real-time data overlays aur automated management ke sath aata hai.
+## ⚡ Setup Guide (Step by Step)
 
-> **Note:** Yeh project khas tor par ICS level ke advanced logic aur Python-FFMPEG integration ko mad-de-nazar rakh kar banaya gaya hai.
+### STEP 1 — GitHub Repo
+1. Create new GitHub repo (e.g. `your-name/mitv-stream`)
+2. Upload ALL these files to the repo root
+3. Make sure `.github/workflows/stream.yml` is in correct path
 
----
+### STEP 2 — GitHub Secrets
+Go to: **Repo → Settings → Secrets → Actions → New repository secret**
 
-## 🔥 Key Features
+Add these 2 secrets:
+- `YOUTUBE_STREAM_KEY` → Your YouTube stream key (e.g. `xxxx-xxxx-xxxx-xxxx`)
+- `FIREBASE_KEY` → Your Firebase Database secret (optional, for private DB)
 
-* **⚡ 24/7 Persistent Stream:** GitHub Actions ki 6-hour limit ko bypass karne ke liye automatic re-triggering logic.
-* **🖼️ Dynamic Visual Overlays:**
-    * **Fixed Logo:** Stream ke top-left corner par professional branding.
-    * **Live PKT Clock:** Pakistan Time Zone ke mutabiq digital clock.
-    * **Live Date:** Animated date box jo har roz auto-update hota hai.
-* **📡 Real-Time Firebase Integration:** Database project `ramadan-2385b` se live text fetch kar ke bottom patti par display karna.
-* **🎨 Customizable UI:** GitHub Workflow se hi patti ka color aur visibility control karne ki saholat.
-* **🔄 Smart Looping & Fallback:** * Video links (mp4, m3u8, mkv, mpd) ka infinite loop.
-    * Agar video link na ho, to Logo ko hi background bana kar audio stream karna.
-    * Audio priority logic (External audio vs Video audio).
+### STEP 3 — YouTube Stream Key
+1. Go to YouTube Studio → Live → Stream key
+2. Copy the key
+3. Paste in GitHub Secret AND in control panel
 
----
+### STEP 4 — Open Control Panel
+- Open `control-panel.html` in browser
+- It connects to Firebase automatically
+- Set your video source (MP4/M3U/YouTube)
+- Set logo, ticker, settings
+- Click **START STREAM**
 
-## 🛠️ Technical Stack
-
-| Component | Technology |
-| :--- | :--- |
-| **Language** | Python 3.10+ |
-| **Core Engine** | FFMPEG (High Performance) |
-| **Automation** | GitHub Actions (CI/CD) |
-| **Real-time DB** | Firebase (Google Cloud) |
-| **Timezone** | Pytz (Asia/Karachi) |
-
----
-
-## 🚀 How to Setup
-
-### 1. Repository Preparation
-Is repository mein niche di gayi files ka hona zaroori hai:
-* `stream_engine.py` (Main Python Logic)
-* `logo.png` (Aapka Channel Logo)
-* `requirements.txt` (Dependencies)
-
-### 2. GitHub Secrets Setup
-Apni repository ki **Settings > Secrets and Variables > Actions** mein jayein aur naya secret add karein:
-* **Name:** `FIREBASE_CONFIG`
-* **Value:** Aapka Firebase Admin JSON ya config data.
-
-### 3. Launching the Stream
-1.  GitHub ke **Actions** tab par jayein.
-2.  **"MiTV 24/7 Stream Engine"** select karein.
-3.  **"Run workflow"** par click karein.
-4.  Apna `Stream Key`, `Video Link`, aur `Audio Link` enter karein aur **Run** kar dein!
+### STEP 5 — Trigger GitHub Actions
+In control panel → Stream tab:
+- Enter your GitHub repo name (`username/repo`)
+- Enter your GitHub token (Settings → Developer Settings → Personal Access Tokens)
+- Click **🚀 Trigger GitHub Actions**
 
 ---
 
-## 📊 Error Handling & Stability
-Yeh system **"Zero-Downtime"** logic par chalta hai. 
-* **Buffer Logic:** FFMPEG logs ko musalsal monitor karta hai.
-* **Atomic File Writes:** Firebase se data fetch karte waqt temporary files use hoti hain taake stream mein jhatka (glitch) na aaye.
-* **Auto-Reconnect:** Internet ya link break hone par 5 seconds mein auto-reconnect.
+## 🔄 How 24/7 Works
+```
+GitHub Actions starts → stream-engine.py reads Firebase → 
+FFmpeg builds → streams to YouTube → 
+if crashes → auto-restart in 5s → 
+every 6 hours → GitHub cron restarts fresh
+```
+
+Your phone can be OFF. GitHub servers run it 24/7.
 
 ---
 
-## 👨‍💻 About the Developer
-**Muaaz Iqbal** ek pur-azm computer science student hain jo technology aur automation ke zariye naye solutions nikalne mein maharat rakhte hain.
-* **Born:** 28th Nov 2009
-* **Father:** Zafar Iqbal
-* **Current Project:** MiTV Network Infrastructure
+## 📺 Video Sources
+
+### MP4
+Direct video file URL. Loops forever.
+```
+https://example.com/video.mp4
+```
+
+### M3U
+IPTV playlist. Enter URL + channel index.
+```
+http://server.com:8080/get.php?username=...&output=m3u
+```
+
+### YouTube
+Any YouTube video/playlist URL. yt-dlp extracts stream.
+```
+https://youtube.com/watch?v=VIDEO_ID
+https://youtube.com/playlist?list=PLAYLIST_ID
+```
 
 ---
-© 2026 MiTV Network | All Rights Reserved.
 
+## ⚙️ Overlay Features
+- **Logo**: Upload via ImgBB → 6 animations (pulse/bounce/rotate/glow/float)
+- **Ticker**: Scrolling text bar → 6 animation styles
+- **Transform**: Zoom, X/Y position, brightness, volume
+- **Audio**: Stereo/Mono/Echo/Bass Boost
+- **Branding**: Channel name, watermark, themes
+
+---
+
+## 🔑 GitHub Token Scopes Needed
+When creating token, check: `workflow` + `repo`
+
+---
+
+## Firebase Structure
+```
+mitv_stream/
+  source/       → video source config
+  transform/    → zoom/position/volume
+  logo/         → logo url, position, animation
+  ticker/       → text, speed, colors
+  streamSettings/ → key, rtmp, resolution
+  branding/     → channel name, theme
+  status/       → live status, loops, uptime
+  logs/         → activity log entries
+  images/       → uploaded ImgBB URLs
+  github/       → repo info
+```

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MiTV Stream Overlay</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body {
+  width: 100%; height: 100%;
+  background: #000; overflow: hidden;
+  font-family: Arial, sans-serif;
+}
+
+/* VIDEO CONTAINER */
+#videoContainer {
+  position: absolute; inset: 0;
+  background: #000;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+#mainVideo {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transform-origin: center center;
+  transition: transform 0.5s, filter 0.5s;
+}
+#mainAudio { display: none; }
+
+/* LOGO */
+#logoOverlay {
+  position: absolute;
+  z-index: 10;
+  display: none;
+}
+#logoOverlay img {
+  display: block;
+  border-radius: 6px;
+}
+#logoOverlay.top-left    { top: 20px; left: 20px; }
+#logoOverlay.top-right   { top: 20px; right: 20px; }
+#logoOverlay.top-center  { top: 20px; left: 50%; transform: translateX(-50%); }
+#logoOverlay.bottom-left { bottom: 60px; left: 20px; }
+#logoOverlay.bottom-right{ bottom: 60px; right: 20px; }
+
+/* LOGO ANIMATIONS */
+@keyframes logoPulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+@keyframes logoBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+@keyframes logoRotate { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+@keyframes logoGlow { 0%,100%{filter:drop-shadow(0 0 5px rgba(255,255,255,0.5))} 50%{filter:drop-shadow(0 0 20px rgba(255,255,255,1))} }
+@keyframes logoFloat { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-5px) scale(1.05)} }
+.anim-pulse { animation: logoPulse 2s infinite; }
+.anim-bounce { animation: logoBounce 1.5s infinite; }
+.anim-rotate { animation: logoRotate 10s linear infinite; }
+.anim-glow { animation: logoGlow 2s infinite; }
+.anim-float { animation: logoFloat 3s ease-in-out infinite; }
+
+/* WATERMARK */
+#watermark {
+  position: absolute; bottom: 60px; right: 14px;
+  font-size: 12px; color: rgba(255,255,255,0.35);
+  letter-spacing: 1px; z-index: 10; pointer-events: none;
+}
+
+/* TICKER BAR */
+#tickerBar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 44px; z-index: 20;
+  display: flex; align-items: center;
+  overflow: hidden;
+}
+#tickerLabel {
+  padding: 0 14px; height: 100%;
+  display: flex; align-items: center;
+  font-weight: 900; font-size: 14px;
+  letter-spacing: 2px; white-space: nowrap;
+  color: white;
+  flex-shrink: 0;
+}
+#tickerTrack {
+  flex: 1; overflow: hidden; height: 100%;
+  display: flex; align-items: center;
+}
+#tickerContent {
+  white-space: nowrap; font-size: 15px;
+  font-weight: 600; letter-spacing: 0.5px;
+  display: inline-block; padding-left: 100%;
+}
+
+/* TICKER ANIMATIONS */
+@keyframes tickerScroll { from{transform:translateX(0)} to{transform:translateX(-100%)} }
+@keyframes tickerFade { 0%,100%{opacity:0} 10%,90%{opacity:1} }
+@keyframes tickerFlash { 0%,100%{opacity:1} 50%{opacity:0.3} }
+@keyframes tickerWave {
+  0%{transform:translateY(0)} 25%{transform:translateY(-3px)}
+  75%{transform:translateY(3px)} 100%{transform:translateY(0)}
+}
+.ticker-scroll #tickerContent { animation: tickerScroll 30s linear infinite; }
+.ticker-fade #tickerContent { animation: tickerFade 5s ease-in-out infinite; padding-left: 20px; }
+.ticker-flash #tickerLabel { animation: tickerFlash 1s infinite; }
+.ticker-wave #tickerContent { animation: tickerWave 2s ease-in-out infinite; padding-left: 20px; }
+.ticker-typewriter #tickerContent { 
+  overflow: hidden; white-space: nowrap; border-right: 2px solid white;
+  animation: tickerTypewriter 6s steps(40) infinite, blink 0.75s step-end infinite;
+  padding-left: 20px; max-width: 80vw;
+}
+@keyframes tickerTypewriter { from{width:0} to{width:100%} }
+@keyframes blink { 50%{border-color:transparent} }
+.ticker-slide #tickerContent {
+  animation: tickerSlide 4s ease-in-out infinite;
+  padding-left: 100%;
+}
+@keyframes tickerSlide { 
+  0%{transform:translateX(0)} 
+  40%{transform:translateX(-50%)} 
+  60%{transform:translateX(-50%)} 
+  100%{transform:translateX(-100%)} 
+}
+
+/* LIVE INDICATOR */
+#liveTag {
+  position: absolute; top: 14px; right: 14px;
+  z-index: 15; background: #e00; color: white;
+  font-size: 11px; font-weight: 900; letter-spacing: 2px;
+  padding: 4px 10px; border-radius: 4px;
+  display: none;
+}
+#liveTag.show { display: block; animation: logoPulse 1s infinite; }
+
+/* CHANNEL TITLE */
+#channelTitle {
+  position: absolute; top: 14px; left: 14px;
+  z-index: 15; font-size: 14px; font-weight: 700;
+  color: rgba(255,255,255,0.8); letter-spacing: 1px;
+  text-shadow: 0 0 10px rgba(0,0,0,0.8);
+  display: none;
+}
+
+/* THEMES */
+body.theme-red #tickerBar .ticker-bg { background: #cc0000; }
+body.theme-gold #tickerBar .ticker-bg { background: #b8860b; }
+body.theme-cyber #tickerBar .ticker-bg { background: #001e3c; border-top: 2px solid #00d4ff; }
+body.theme-minimal #tickerBar .ticker-bg { background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); }
+
+/* LOADING */
+#loadingScreen {
+  position: absolute; inset: 0;
+  background: #000; z-index: 100;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+#loadingScreen .mitv-logo {
+  font-family: Arial Black, sans-serif; font-size: 48px; font-weight: 900;
+  color: #00d4ff; letter-spacing: 4px; margin-bottom: 16px;
+}
+#loadingScreen .mitv-logo span { color: #ff3d6b; }
+.loading-bar {
+  width: 200px; height: 3px; background: #111; border-radius: 2px; overflow: hidden;
+}
+.loading-bar-inner {
+  height: 100%; background: linear-gradient(90deg, #00d4ff, #ff3d6b);
+  animation: loadingAnim 2s ease-in-out infinite;
+}
+@keyframes loadingAnim { 0%{width:0;margin-left:0} 50%{width:100%;margin-left:0} 100%{width:0;margin-left:100%} }
+#loadingStatus { color: #4a6680; font-size: 12px; margin-top: 12px; letter-spacing: 2px; }
+</style>
+</head>
+<body id="body">
+
+<div id="loadingScreen">
+  <div class="mitv-logo">Mi<span>TV</span></div>
+  <div class="loading-bar"><div class="loading-bar-inner"></div></div>
+  <div id="loadingStatus">CONNECTING...</div>
+</div>
+
+<div id="videoContainer">
+  <video id="mainVideo" autoplay muted loop playsinline></video>
+  <audio id="mainAudio" autoplay loop></audio>
+</div>
+
+<div id="liveTag">● LIVE</div>
+<div id="channelTitle"></div>
+
+<div id="logoOverlay" class="top-left">
+  <img id="logoImg" src="" alt="Logo">
+</div>
+
+<div id="watermark">MiTV Network</div>
+
+<div id="tickerBar">
+  <div id="tickerBg" class="ticker-bg" style="position:absolute;inset:0"></div>
+  <div id="tickerLabel" style="position:relative;z-index:1;background:rgba(0,0,0,0.3)">📺 LIVE</div>
+  <div id="tickerTrack" style="position:relative;z-index:1">
+    <div id="tickerContent">MiTV Network • 24/7 Live Stream • Loading...</div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBbnU8DkthpYQMHOLLyj6M0cc05qXfjMcw",
+  authDomain: "ramadan-2385b.firebaseapp.com",
+  databaseURL: "https://ramadan-2385b-default-rtdb.firebaseio.com",
+  projectId: "ramadan-2385b",
+  storageBucket: "ramadan-2385b.firebasestorage.app",
+  messagingSenderId: "882828936310",
+  appId: "1:882828936310:web:7f97b921031fe130fe4b57"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const video = document.getElementById('mainVideo');
+const audio = document.getElementById('mainAudio');
+
+function setLoadingStatus(msg) {
+  document.getElementById('loadingStatus').textContent = msg;
+}
+
+function hideLoading() {
+  const ls = document.getElementById('loadingScreen');
+  ls.style.transition = 'opacity 1s';
+  ls.style.opacity = '0';
+  setTimeout(() => ls.style.display = 'none', 1000);
+}
+
+// MAIN REALTIME LISTENER
+onValue(ref(db, 'mitv_stream'), async (snap) => {
+  const data = snap.val();
+  if (!data) { setLoadingStatus('NO CONFIG'); return; }
+
+  // TRANSFORM
+  if (data.transform) {
+    const t = data.transform;
+    const scale = (t.zoom || 100) / 100;
+    const tx = (t.posX || 0);
+    const ty = (t.posY || 0);
+    video.style.transform = `scale(${scale}) translate(${tx}px, ${ty}px)`;
+    video.style.filter = `brightness(${(t.brightness||100)/100})`;
+    // Volume
+    video.volume = Math.min(2, (t.volume||100)/100);
+  }
+
+  // LOGO
+  if (data.logo && data.logo.url) {
+    const lo = document.getElementById('logoOverlay');
+    const li = document.getElementById('logoImg');
+    li.src = data.logo.url;
+    li.style.width = (data.logo.size || 80) + 'px';
+    lo.className = data.logo.position || 'top-left';
+    lo.style.display = 'block';
+    // Animation
+    const anim = data.logo.animation || 'pulse';
+    li.className = anim !== 'none' ? 'anim-' + anim : '';
+  } else {
+    document.getElementById('logoOverlay').style.display = 'none';
+  }
+
+  // TICKER
+  if (data.ticker) {
+    const tc = document.getElementById('tickerContent');
+    const tb = document.getElementById('tickerBar');
+    const tbg = document.getElementById('tickerBg');
+    tc.textContent = data.ticker.text || 'MiTV Network • 24/7 Live Stream';
+    tbg.style.background = data.ticker.bg || '#cc0000';
+    document.getElementById('tickerLabel').style.color = data.ticker.color || '#fff';
+    tc.style.color = data.ticker.color || '#fff';
+    // Speed
+    const speeds = { slow: '50s', medium: '30s', fast: '15s', vfast: '8s' };
+    const spd = speeds[data.ticker.speed] || '30s';
+    // Animation class
+    const anim = data.ticker.animation || 'scroll';
+    tb.className = 'ticker-' + anim;
+    tc.style.animationDuration = spd;
+    document.getElementById('tickerContent').style.animationDuration = spd;
+  }
+
+  // BRANDING
+  if (data.branding) {
+    document.getElementById('watermark').textContent = data.branding.watermarkText || 'MiTV Network';
+    const ct = document.getElementById('channelTitle');
+    if (data.branding.channelName) {
+      ct.textContent = data.branding.channelName;
+      ct.style.display = 'block';
+    }
+    document.body.className = 'theme-' + (data.branding.theme || 'dark');
+  }
+
+  // STATUS
+  if (data.status) {
+    const lt = document.getElementById('liveTag');
+    lt.className = data.status.live ? 'show' : '';
+  }
+
+  // SOURCE — load video
+  if (data.source && data.source.url) {
+    const s = data.source;
+    setLoadingStatus('LOADING SOURCE...');
+    try {
+      if (s.type === 'mp4') {
+        video.src = s.url;
+        video.loop = s.loop !== 'once';
+        video.play().then(hideLoading).catch(e => { video.muted=true; video.play().then(hideLoading); });
+      } else if (s.type === 'm3u') {
+        setLoadingStatus('LOADING M3U...');
+        const streams = await parseM3U(s.url);
+        const idx = Math.min(s.index || 0, streams.length - 1);
+        if (streams[idx]) {
+          video.src = streams[idx];
+          video.play().then(hideLoading).catch(e => { video.muted=true; video.play().then(hideLoading); });
+        }
+      } else if (s.type === 'youtube') {
+        setLoadingStatus('YOUTUBE: USE GITHUB ACTIONS');
+        hideLoading();
+      }
+    } catch(e) {
+      setLoadingStatus('ERROR: ' + e.message);
+    }
+  }
+});
+
+async function parseM3U(url) {
+  try {
+    const res = await fetch(url);
+    const text = await res.text();
+    const lines = text.split('\n');
+    const streams = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line && !line.startsWith('#')) streams.push(line);
+    }
+    return streams;
+  } catch(e) { return []; }
+}
+
+// Video loop/restart on end
+video.addEventListener('ended', () => {
+  video.currentTime = 0;
+  video.play();
+});
+
+video.addEventListener('error', () => {
+  setTimeout(() => { video.load(); video.play(); }, 3000);
+});
+</script>
+</body>
+</html>
