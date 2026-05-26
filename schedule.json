@@ -1,0 +1,59 @@
+{
+  "programs": [
+    {
+      "name": "Morning Show",
+      "start": "05:00",
+      "end": "09:00",
+      "days": ["mon","tue","wed","thu","fri"],
+      "source": {
+        "type": "mp4",
+        "url": "https://your-morning-video-url.mp4",
+        "loop": "loop"
+      }
+    },
+    {
+      "name": "News Hour",
+      "start": "09:00",
+      "end": "10:00",
+      "days": ["mon","tue","wed","thu","fri","sat","sun"],
+      "source": {
+        "type": "m3u",
+        "url": "https://your-news-m3u-url.m3u",
+        "index": 0
+      }
+    },
+    {
+      "name": "Afternoon Entertainment",
+      "start": "14:00",
+      "end": "18:00",
+      "days": ["mon","tue","wed","thu","fri","sat","sun"],
+      "source": {
+        "type": "mp4",
+        "url": "https://your-afternoon-video-url.mp4",
+        "loop": "loop"
+      }
+    },
+    {
+      "name": "Prime Time",
+      "start": "20:00",
+      "end": "23:00",
+      "days": ["mon","tue","wed","thu","fri","sat","sun"],
+      "source": {
+        "type": "m3u",
+        "url": "https://your-primetime-m3u-url.m3u",
+        "index": 0
+      }
+    },
+    {
+      "name": "Night Stream",
+      "start": "23:00",
+      "end": "05:00",
+      "days": ["mon","tue","wed","thu","fri","sat","sun"],
+      "source": {
+        "type": "mp4",
+        "url": "https://your-night-video-url.mp4",
+        "loop": "loop"
+      }
+    }
+  ]
+}
