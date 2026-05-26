@@ -1,80 +1,42 @@
-name: MiTV 24/7 Live Stream Engine
+name: 24/7 Live Stream Engine
 
 on:
-  workflow_dispatch:
-    inputs:
-      force_restart:
-        description: 'Force restart stream'
-        required: false
-        default: 'false'
   push:
-    branches: [ main ]
-    paths:
-      - 'stream-engine.py'
-      - 'schedule.json'
+    branches: [main]
+  workflow_dispatch:
   schedule:
-    # Auto-restart every 5h 55min (GitHub max is 6h)
-    - cron: '0 */6 * * *'
-    - cron: '55 5,11,17,23 * * *'
+    - cron: '*/25 * * * *'  # Auto-restart every 25 min (GitHub limit safety)
 
 jobs:
   stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 355
-    permissions:
-      contents: write
+    timeout-minutes: 360
 
     steps:
-      - name: ⬇️ Checkout repo
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v3
 
-      - name: 📦 Install system dependencies
+      - name: Install FFmpeg & Dependencies
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y ffmpeg python3-pip curl jq wget git
-          echo "✅ System dependencies installed"
+          sudo apt-get update -y
+          sudo apt-get install -y ffmpeg curl jq
 
-      - name: 🐍 Install Python packages
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Fetch Stream Config from Firebase
         run: |
-          pip3 install --break-system-packages yt-dlp requests || pip3 install yt-dlp requests
-          echo "✅ Python packages ready"
+          curl -s "https://ramadan-2385b-default-rtdb.firebaseio.com/stream_config.json" > /tmp/config.json
+          cat /tmp/config.json
 
-      - name: 🌐 Install Cloudflared (Public Tunnel)
-        run: |
-          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -O /tmp/cf.deb
-          sudo dpkg -i /tmp/cf.deb
-          cloudflared --version
-          echo "✅ Cloudflared ready"
-
-      - name: 📋 Load Schedule
-        run: |
-          if [ -f schedule.json ]; then
-            echo "📅 Schedule file found:"
-            cat schedule.json | jq '.programs | length' | xargs -I{} echo "{} programs loaded"
-          else
-            echo "⚠️ No schedule.json — using Firebase schedule"
-          fi
-
-      - name: 🎬 Verify FFmpeg
-        run: |
-          ffmpeg -version | head -2
-          echo "✅ FFmpeg ready"
-
-      - name: 🔴 Run MiTV Stream Engine
+      - name: Start 24/7 Stream Loop
         env:
-          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          RUNNER_NUMBER: ${{ github.run_number }}
+          FIREBASE_URL: https://ramadan-2385b-default-rtdb.firebaseio.com
         run: |
-          echo "🚀 Starting MiTV Stream Engine v3"
-          echo "🕐 Time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-          python3 stream-engine.py
-
-      - name: 🔁 Auto-Restart Notice
-        if: always()
-        run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "⏱️  Stream ended: $(date -u)"
-          echo "🔁 Auto-restart scheduled via cron"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          bash stream_engine.sh
+        timeout-minutes: 350
