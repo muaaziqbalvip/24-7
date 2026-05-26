@@ -1,42 +1,34 @@
-name: 24/7 Live Stream Engine
+name: MiTV 24/7 Live Stream
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
   schedule:
-    - cron: '*/25 * * * *'  # Auto-restart every 25 min (GitHub limit safety)
+    # Restart every 5 hours 50 min (GitHub Actions max is 6h)
+    - cron: '0 */6 * * *'
 
 jobs:
   stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 355
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - name: Install FFmpeg & Dependencies
+      - name: Install dependencies
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y ffmpeg curl jq
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg python3-pip curl jq
+          pip3 install yt-dlp firebase-admin requests --quiet
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      - name: Install Firebase CLI
-        run: npm install -g firebase-tools
-
-      - name: Fetch Stream Config from Firebase
-        run: |
-          curl -s "https://ramadan-2385b-default-rtdb.firebaseio.com/stream_config.json" > /tmp/config.json
-          cat /tmp/config.json
-
-      - name: Start 24/7 Stream Loop
+      - name: Run Stream Engine
         env:
-          FIREBASE_URL: https://ramadan-2385b-default-rtdb.firebaseio.com
+          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
+          YOUTUBE_STREAM_KEY: ${{ secrets.YOUTUBE_STREAM_KEY }}
         run: |
-          bash stream_engine.sh
-        timeout-minutes: 350
+          python3 stream-engine.py
+
+      - name: Auto-restart trigger
+        if: always()
+        run: |
+          echo "Stream ended — auto-restart via schedule cron"
