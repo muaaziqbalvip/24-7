@@ -3,12 +3,9 @@
 ## Files
 | File | Purpose |
 |------|---------|
-| `control-panel.html` | Master control panel (Firebase connected) |
+| `control-panel.html` | Main control panel (Firebase connected) |
 | `stream-overlay.html` | Stream preview overlay |
-| `stream-engine.py` | GitHub Actions streaming engine (YouTube RTMP) |
-| `hls-server.py` | **🔴 HLS M3U8 live stream server + testing dashboard** |
-| `push-endpoint.py` | Webhook trigger endpoint |
-| `m3u-server.py` | M3U playlist server (legacy) |
+| `stream-engine.py` | GitHub Actions streaming engine |
 | `.github/workflows/stream.yml` | 24/7 auto-restart workflow |
 
 ---
@@ -47,44 +44,7 @@ In control panel → Stream tab:
 
 ---
 
-## 🔴 HLS M3U8 LIVE STREAM (NEW!)
-
-### What is M3U8?
-- **Real-time HLS format** (Apple HTTP Live Streaming)
-- Works in VLC, IPTV apps, browsers
-- Adaptive quality, reliable live streaming
-- Better than basic M3U for live channels
-
-### How to Use:
-
-**1. Start HLS Server:**
-```bash
-python3 hls-server.py 8080
-```
-
-**2. In Control Panel:**
-- Go to **Stream Tab**
-- Enter HLS Server URL: `http://your-server:8080`
-- Click **Generate HLS M3U8 Links**
-- Copy the M3U8 link OR open Testing Dashboard
-
-**3. Watch Live:**
-```bash
-# VLC command line
-vlc http://your-server:8080/live.m3u8
-
-# Or open Testing Dashboard in browser
-http://your-server:8080/testing
-```
-
-### Testing Dashboard Features:
-- 🎬 Live video player (Video.js)
-- 📊 Real-time stats (uptime, segments, loops)
-- 📋 Copy M3U8 link + VLC integration
-- 🔴 Live status indicator
-- 🧪 Test streaming before deployment
-
----
+## 🔄 How 24/7 Works
 ```
 GitHub Actions starts → stream-engine.py reads Firebase → 
 FFmpeg builds → streams to YouTube → 
