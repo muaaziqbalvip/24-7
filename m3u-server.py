@@ -33,10 +33,6 @@ class M3UHandler(BaseHTTPRequestHandler):
         if self.path == '/playlist.m3u' or self.path == '/get.m3u':
             self.send_m3u_playlist()
         
-        # /playlist.m3u8 or /stream.m3u8 → return HLS M3U8 format (LIVE)
-        elif self.path == '/playlist.m3u8' or self.path == '/stream.m3u8' or self.path == '/live.m3u8':
-            self.send_m3u8_hls()
-        
         # /status → return JSON status
         elif self.path == '/status':
             self.send_json_status()
@@ -53,7 +49,7 @@ class M3UHandler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
-            self.wfile.write(b"Not Found. Use /playlist.m3u, /playlist.m3u8, or /status")
+            self.wfile.write(b"Not Found. Use /playlist.m3u or /status")
 
     def send_m3u_playlist(self):
         """Return M3U format for IPTV players"""
@@ -94,54 +90,6 @@ class M3UHandler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         self.wfile.write(m3u_content.encode())
-
-    def send_m3u8_hls(self):
-        """Return M3U8 HLS format for live streaming"""
-        config = fb_get("mitv_stream")
-        branding = config.get("branding", {}) if config else {}
-        channel_name = branding.get("channelName", "MiTV Live")
-        
-        # HLS M3U8 format
-        m3u8_content = "#EXTM3U\n"
-        m3u8_content += "#EXT-X-VERSION:3\n"
-        m3u8_content += "#EXT-X-TARGETDURATION:10\n"
-        m3u8_content += "#EXT-X-MEDIA-SEQUENCE:0\n"
-        m3u8_content += "#EXT-X-PLAYLIST-TYPE:EVENT\n"
-        
-        # Point to actual stream source
-        if config and config.get("source"):
-            src = config["source"]
-            stream_url = src.get("url", "")
-            
-            if src.get("type") == "youtube":
-                # For YouTube, we can try to extract HLS URL
-                m3u8_content += f"# Live stream from YouTube\n"
-                m3u8_content += f"# Video: {stream_url}\n"
-                m3u8_content += f"#EXT-X-DISCONTINUITY\n"
-                m3u8_content += f"{stream_url}\n"
-            elif src.get("type") == "m3u":
-                # M3U playlist - parse and get first stream
-                m3u8_content += f"# IPTV Stream\n"
-                m3u8_content += f"{stream_url}\n"
-            elif src.get("type") == "mp4":
-                # MP4 file - serve as is
-                m3u8_content += f"# MP4 Video Stream\n"
-                m3u8_content += f"#EXT-X-DISCONTINUITY\n"
-                m3u8_content += f"{stream_url}\n"
-        else:
-            m3u8_content += "#EXT-X-DISCONTINUITY\n"
-            m3u8_content += "http://localhost:8000/live\n"
-        
-        m3u8_content += "#EXT-X-ENDLIST\n"
-        
-        # Send response
-        self.send_response(200)
-        self.send_header('Content-type', 'application/vnd.apple.mpegurl; charset=utf-8')
-        self.send_header('Content-Disposition', 'inline; filename="mitv-live.m3u8"')
-        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.end_headers()
-        self.wfile.write(m3u8_content.encode())
 
     def send_json_status(self):
         """Return live status as JSON"""
@@ -223,20 +171,16 @@ def start_server(port=8080):
     """Start M3U server"""
     server = HTTPServer(('0.0.0.0', port), M3UHandler)
     print(f"\n{'='*50}")
-    print(f"MiTV M3U / M3U8 Server Started on port {port}")
+    print(f"MiTV M3U Server Started on port {port}")
     print(f"{'='*50}")
     print(f"\n📺 Endpoints:")
-    print(f"  • M3U Playlist:   http://localhost:{port}/playlist.m3u")
-    print(f"  • M3U8 Live HLS:  http://localhost:{port}/playlist.m3u8")
-    print(f"  • Live Status:    http://localhost:{port}/status")
-    print(f"  • Channel Info:   http://localhost:{port}/info")
-    print(f"  • Push Stream:    http://localhost:{port}/push")
+    print(f"  • M3U Playlist:  http://localhost:{port}/playlist.m3u")
+    print(f"  • Live Status:   http://localhost:{port}/status")
+    print(f"  • Channel Info:  http://localhost:{port}/info")
+    print(f"  • Push Stream:   http://localhost:{port}/push")
     print(f"\n💡 Usage:")
-    print(f"  VLC (M3U):  Open Network Stream → http://localhost:{port}/playlist.m3u")
-    print(f"  VLC (M3U8): Open Network Stream → http://localhost:{port}/playlist.m3u8")
-    print(f"  IPTV App:   Add playlist → http://localhost:{port}/playlist.m3u")
-    print(f"  Live (HLS): Use → http://localhost:{port}/playlist.m3u8")
-    print(f"  Curl Push:  curl http://localhost:{port}/push (to start stream)")
+    print(f"  VLC: Open Network Stream → http://localhost:{port}/playlist.m3u")
+    print(f"  Curl: curl http://localhost:{port}/push (to start stream)")
     print(f"\n{'='*50}\n")
     
     try:

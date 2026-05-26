@@ -707,27 +707,19 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
       </div>
 
       <div class="card">
-        <div class="card-title"><span class="icon">📺</span> M3U8 LIVE HLS STREAM</div>
+        <div class="card-title"><span class="icon">📺</span> M3U PLAYLIST EXPORT</div>
         <div style="margin-bottom:12px;padding:10px;background:var(--surface);border-radius:8px;font-size:11px;color:var(--muted);border-left:2px solid var(--accent3)">
-          🔴 Real-time HLS M3U8 stream. VLC/IPTV compatible. Live testing available.
+          Share channel as M3U format. Anyone can stream in VLC/IPTV players.
         </div>
         <div class="input-group">
-          <label class="input-label">HLS Server URL</label>
-          <input class="inp" type="text" id="hlsServerUrl" placeholder="http://your-server.com:8080">
+          <label class="input-label">M3U Server URL</label>
+          <input class="inp" type="text" id="m3uServerUrl" placeholder="http://your-server.com:8080">
         </div>
-        <button class="btn btn-primary btn-full" onclick="generateHLSLinks()">📥 Generate HLS M3U8 Links</button>
-        <div id="hlsLinksDisplay" style="margin-top:10px;padding:10px;background:var(--surface);border-radius:8px;display:none">
-          <div style="font-size:10px;color:var(--accent3);margin-bottom:8px;letter-spacing:1px;font-weight:bold">🔴 LIVE M3U8 HLS:</div>
-          <input class="inp" type="text" id="hlsStreamLink" readonly style="font-size:11px;margin-bottom:8px">
-          <div style="display:flex;gap:6px">
-            <button class="btn btn-success btn-sm" style="flex:1" onclick="copyHLSLink()">📋 Copy</button>
-            <button class="btn btn-secondary btn-sm" style="flex:1" onclick="openVLCLink()">🎬 VLC</button>
-          </div>
-          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(0,212,255,0.2)">
-            <div style="font-size:10px;color:var(--accent3);margin-bottom:6px;font-weight:bold">🧪 TESTING PAGE:</div>
-            <input class="inp" type="text" id="testingPageUrl" readonly style="font-size:11px;margin-bottom:8px">
-            <button class="btn btn-secondary btn-full btn-sm" onclick="openTestingPage()">🔗 Open Testing Dashboard</button>
-          </div>
+        <button class="btn btn-primary btn-full" onclick="generateM3ULink()">📥 Generate M3U URL</button>
+        <div id="m3uLinkDisplay" style="margin-top:10px;padding:10px;background:var(--surface);border-radius:8px;display:none">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">📋 M3U Playlist Link:</div>
+          <input class="inp" type="text" id="m3uLinkOutput" readonly style="font-size:11px">
+          <button class="btn btn-secondary btn-sm btn-full" style="margin-top:8px" onclick="copyM3ULink()">📋 Copy Link</button>
         </div>
       </div>
 
@@ -1298,89 +1290,6 @@ function renderSideGallery(imgs) {
 
 // Init sliders
 updateTransform();
-
-// HLS M3U8 Functions
-window.generateHLSLinks = () => {
-  const serverUrl = document.getElementById('hlsServerUrl').value;
-  if (!serverUrl) { showToast('Enter HLS Server URL','error'); return; }
-  
-  const hlsLink = `${serverUrl}/live.m3u8`;
-  const testingLink = `${serverUrl}/testing`;
-  
-  document.getElementById('hlsStreamLink').value = hlsLink;
-  document.getElementById('testingPageUrl').value = testingLink;
-  document.getElementById('hlsLinksDisplay').style.display = 'block';
-  
-  showToast('✅ HLS M3U8 Links Generated!');
-};
-
-window.copyHLSLink = () => {
-  const link = document.getElementById('hlsStreamLink').value;
-  if (!link) return;
-  navigator.clipboard.writeText(link);
-  showToast('📋 M3U8 Link Copied!');
-};
-
-window.openVLCLink = () => {
-  const link = document.getElementById('hlsStreamLink').value;
-  if (!link) return;
-  window.location.href = 'vlc://' + link;
-};
-
-window.openTestingPage = () => {
-  const testUrl = document.getElementById('testingPageUrl').value;
-  if (!testUrl) { showToast('Generate links first','error'); return; }
-  window.open(testUrl, '_blank', 'width=1200,height=700');
-};
-
-// Push Webhook Functions
-window.pushAction = async (action) => {
-  const endpoint = document.getElementById('pushEndpointUrl').value;
-  const secret = document.getElementById('pushSecret').value;
-  
-  if (!endpoint || !secret) {
-    showToast('Enter endpoint URL and secret','error');
-    return;
-  }
-  
-  try {
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Push-Secret': secret },
-      body: JSON.stringify({ action, secret })
-    });
-    
-    const data = await res.json();
-    if (res.ok) {
-      showToast(`✅ ${data.message}`);
-      addLog(`Push: ${action.toUpperCase()}`);
-    } else {
-      showToast(`Error: ${data.error}`,'error');
-    }
-  } catch(e) {
-    showToast(`Webhook error: ${e.message}`,'error');
-  }
-};
-
-window.testPush = async () => {
-  const endpoint = document.getElementById('pushEndpointUrl').value;
-  const secret = document.getElementById('pushSecret').value;
-  
-  if (!endpoint) { showToast('Enter endpoint URL','error'); return; }
-  
-  try {
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'push', secret: secret || 'test' })
-    });
-    
-    showToast(res.ok ? '✅ Webhook OK!' : `❌ Error ${res.status}`);
-  } catch(e) {
-    showToast(`Connection failed: ${e.message}`,'error');
-  }
-};
-
 </script>
 
 </body>
