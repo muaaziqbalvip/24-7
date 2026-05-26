@@ -36,8 +36,6 @@ body::before {
               radial-gradient(ellipse at 80% 80%, rgba(255,61,107,0.05) 0%, transparent 60%);
   pointer-events:none; z-index:0;
 }
-
-/* HEADER */
 .header {
   position: sticky; top:0; z-index:100;
   background: rgba(5,10,15,0.95);
@@ -54,31 +52,23 @@ body::before {
   letter-spacing: 2px;
 }
 .logo span { color: var(--accent2); -webkit-text-fill-color: var(--accent2); }
-.status-bar {
-  display: flex; gap: 16px; align-items: center;
-}
+.status-bar { display: flex; gap: 16px; align-items: center; }
 .status-dot {
   width: 10px; height: 10px; border-radius: 50%;
   background: #333; transition: all 0.3s;
-  box-shadow: none;
 }
 .status-dot.live { background: var(--accent2); box-shadow: 0 0 10px var(--accent2); animation: pulse 1s infinite; }
 .status-dot.connected { background: var(--accent3); box-shadow: 0 0 10px var(--accent3); }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 .status-text { font-size: 13px; color: var(--muted); letter-spacing: 1px; }
-
-/* MAIN LAYOUT */
 .main {
   display: grid;
   grid-template-columns: 1fr 340px;
   gap: 20px;
-  padding: 20px 24px 100px;
+  padding: 20px 24px 120px;
   max-width: 1400px; margin: 0 auto;
   position: relative; z-index: 1;
 }
-
-/* PREVIEW SCREEN */
-.preview-section { grid-column: 1; }
 .preview-wrapper {
   background: #000;
   border: 1px solid var(--border);
@@ -88,25 +78,17 @@ body::before {
   aspect-ratio: 16/9;
   box-shadow: var(--glow);
 }
-.preview-iframe {
-  width: 100%; height: 100%; border: none;
-  display: block;
-}
+.preview-iframe { width: 100%; height: 100%; border: none; display: block; }
 .preview-label {
   position: absolute; top: 12px; left: 12px;
   background: var(--accent2);
   color: white; font-family: 'Orbitron', sans-serif;
   font-size: 11px; font-weight: 700;
   padding: 4px 10px; border-radius: 6px;
-  letter-spacing: 2px;
-  display: none;
+  letter-spacing: 2px; display: none;
 }
 .preview-label.show { display: block; animation: pulse 1s infinite; }
-.preview-controls {
-  display: flex; gap: 10px; margin-top: 12px;
-}
-
-/* CARDS */
+.preview-controls { display: flex; gap: 10px; margin-top: 12px; }
 .card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -124,14 +106,8 @@ body::before {
   margin-bottom: 16px;
   display: flex; align-items: center; gap: 8px;
 }
-.card-title .icon { font-size: 16px; }
-
-/* INPUTS */
 .input-group { margin-bottom: 14px; }
-.input-label {
-  font-size: 12px; color: var(--muted);
-  letter-spacing: 1px; margin-bottom: 6px; display: block;
-}
+.input-label { font-size: 12px; color: var(--muted); letter-spacing: 1px; margin-bottom: 6px; display: block; }
 .inp {
   width: 100%;
   background: var(--surface);
@@ -148,8 +124,6 @@ body::before {
 .inp::placeholder { color: var(--muted); }
 select.inp option { background: var(--card); }
 textarea.inp { resize: vertical; min-height: 80px; }
-
-/* BUTTONS */
 .btn {
   padding: 10px 20px;
   border: none; border-radius: 10px;
@@ -160,34 +134,17 @@ textarea.inp { resize: vertical; min-height: 80px; }
   transition: all 0.2s;
   outline: none;
 }
-.btn-primary {
-  background: linear-gradient(135deg, var(--accent), #0099cc);
-  color: #000; box-shadow: var(--glow);
-}
+.btn-primary { background: linear-gradient(135deg, var(--accent), #0099cc); color: #000; box-shadow: var(--glow); }
 .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(0,212,255,0.5); }
-.btn-danger {
-  background: linear-gradient(135deg, var(--accent2), #cc0033);
-  color: white; box-shadow: var(--glow2);
-}
+.btn-danger { background: linear-gradient(135deg, var(--accent2), #cc0033); color: white; box-shadow: var(--glow2); }
 .btn-danger:hover { transform: translateY(-2px); }
-.btn-success {
-  background: linear-gradient(135deg, var(--accent3), #00cc77);
-  color: #000;
-}
-.btn-secondary {
-  background: var(--surface); border: 1px solid var(--border); color: var(--text);
-}
-.btn-gold {
-  background: linear-gradient(135deg, var(--gold), #cc9900);
-  color: #000;
-}
+.btn-success { background: linear-gradient(135deg, var(--accent3), #00cc77); color: #000; }
+.btn-secondary { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+.btn-gold { background: linear-gradient(135deg, var(--gold), #cc9900); color: #000; }
+.btn-purple { background: linear-gradient(135deg, #a855f7, #7c3aed); color: white; }
 .btn-sm { padding: 7px 14px; font-size: 12px; }
 .btn-full { width: 100%; text-align: center; }
-
-/* VIDEO SOURCE TABS */
-.source-tabs {
-  display: flex; gap: 8px; margin-bottom: 16px;
-}
+.source-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
 .tab {
   flex: 1; padding: 8px;
   background: var(--surface); border: 1px solid var(--border);
@@ -198,8 +155,6 @@ textarea.inp { resize: vertical; min-height: 80px; }
   transition: all 0.2s; letter-spacing: 1px;
 }
 .tab.active { background: var(--accent); color: #000; border-color: var(--accent); }
-
-/* SLIDERS */
 .slider-group { margin-bottom: 14px; }
 .slider-row { display: flex; align-items: center; gap: 12px; }
 .slider {
@@ -213,33 +168,15 @@ textarea.inp { resize: vertical; min-height: 80px; }
   background: var(--accent); cursor: pointer;
   box-shadow: 0 0 8px var(--accent);
 }
-.slider-val {
-  min-width: 45px; text-align: right;
-  font-size: 13px; color: var(--accent);
-  font-family: 'Orbitron', sans-serif;
-}
-
-/* COLOR PICKER */
-.color-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.color-swatch {
-  width: 32px; height: 32px; border-radius: 8px;
-  cursor: pointer; border: 2px solid transparent;
-  transition: border-color 0.2s; flex-shrink: 0;
-}
-.color-swatch.active { border-color: white; }
-input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: pointer; border: none; padding: 0; }
-
-/* TICKER */
+.slider-val { min-width: 45px; text-align: right; font-size: 13px; color: var(--accent); font-family: 'Orbitron', sans-serif; }
 .ticker-preview {
   background: #000; border-radius: 8px;
   padding: 10px 14px; margin-top: 10px;
   font-size: 13px; overflow: hidden;
   border: 1px solid var(--border);
 }
-.ticker-inner { white-space: nowrap; display: inline-block; animation: ticker 20s linear infinite; }
-@keyframes ticker { from{transform:translateX(100%)} to{transform:translateX(-100%)} }
-
-/* LOGO UPLOAD */
+.ticker-inner { white-space: nowrap; display: inline-block; animation: tickerAnim 20s linear infinite; }
+@keyframes tickerAnim { from{transform:translateX(100%)} to{transform:translateX(-100%)} }
 .logo-upload-area {
   border: 2px dashed var(--border);
   border-radius: 12px; padding: 20px;
@@ -247,13 +184,7 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
   transition: border-color 0.3s;
 }
 .logo-upload-area:hover { border-color: var(--accent); }
-.logo-preview {
-  max-width: 120px; max-height: 60px;
-  margin: 10px auto 0; display: none;
-  border-radius: 8px;
-}
-
-/* ANIMATION SELECTOR */
+.logo-preview { max-width: 120px; max-height: 60px; margin: 10px auto 0; display: none; border-radius: 8px; }
 .anim-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
 .anim-opt {
   padding: 8px 6px; background: var(--surface);
@@ -262,22 +193,10 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
   color: var(--muted); transition: all 0.2s; letter-spacing: 0.5px;
 }
 .anim-opt.active { border-color: var(--accent3); color: var(--accent3); background: rgba(0,255,157,0.08); }
-
-/* STREAM KEY */
 .stream-key-row { position: relative; }
 .stream-key-row .inp { padding-right: 44px; }
-.eye-btn {
-  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-  background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px;
-}
-
-/* STREAM STATUS CARD */
-.stream-status {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px; padding: 20px;
-  margin-bottom: 16px;
-}
+.eye-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; }
+.stream-status { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
 .big-stream-btn {
   width: 100%; padding: 18px;
   font-family: 'Orbitron', sans-serif;
@@ -287,14 +206,8 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
   cursor: pointer; transition: all 0.3s;
   position: relative; overflow: hidden;
 }
-.big-stream-btn.start {
-  background: linear-gradient(135deg, var(--accent2), #ff6b35);
-  color: white; box-shadow: 0 0 30px rgba(255,61,107,0.4);
-}
-.big-stream-btn.stop {
-  background: linear-gradient(135deg, #333, #555);
-  color: var(--muted);
-}
+.big-stream-btn.start { background: linear-gradient(135deg, var(--accent2), #ff6b35); color: white; box-shadow: 0 0 30px rgba(255,61,107,0.4); }
+.big-stream-btn.stop { background: linear-gradient(135deg, #333, #555); color: var(--muted); }
 .big-stream-btn::after {
   content:''; position:absolute; inset:0;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
@@ -302,31 +215,15 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
 }
 .big-stream-btn:hover::after { transform: translateX(100%); }
 .stats-row { display: flex; gap: 12px; margin-top: 14px; }
-.stat-box {
-  flex: 1; background: var(--surface); border-radius: 10px; padding: 10px;
-  text-align: center; border: 1px solid var(--border);
-}
+.stat-box { flex: 1; background: var(--surface); border-radius: 10px; padding: 10px; text-align: center; border: 1px solid var(--border); }
 .stat-val { font-family: 'Orbitron', sans-serif; font-size: 18px; color: var(--accent); font-weight: 700; }
 .stat-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-top: 3px; }
-
-/* IMGBB UPLOAD */
 .imgbb-gallery { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 10px; }
-.imgbb-thumb {
-  aspect-ratio: 1; border-radius: 8px; overflow: hidden;
-  cursor: pointer; border: 2px solid transparent; transition: border-color 0.2s;
-  position: relative;
-}
+.imgbb-thumb { aspect-ratio: 1; border-radius: 8px; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: border-color 0.2s; position: relative; }
 .imgbb-thumb:hover { border-color: var(--accent); }
 .imgbb-thumb img { width:100%; height:100%; object-fit:cover; }
-.imgbb-thumb .use-btn {
-  position: absolute; inset:0; background: rgba(0,0,0,0.7);
-  display:flex; align-items:center; justify-content:center;
-  opacity:0; transition:opacity 0.2s; font-size:11px; font-weight:700; color: var(--accent3);
-  letter-spacing:1px;
-}
+.imgbb-thumb .use-btn { position: absolute; inset:0; background: rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s; font-size:11px; font-weight:700; color: var(--accent3); letter-spacing:1px; }
 .imgbb-thumb:hover .use-btn { opacity:1; }
-
-/* BOTTOM NAV */
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0;
   background: rgba(10,21,32,0.97);
@@ -336,10 +233,7 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
   display: flex; gap: 10px; justify-content: center;
   z-index: 100; flex-wrap: wrap;
 }
-.nav-section {
-  display: flex; gap: 8px; align-items: center;
-  padding: 0 12px; border-right: 1px solid var(--border);
-}
+.nav-section { display: flex; gap: 8px; align-items: center; padding: 0 12px; border-right: 1px solid var(--border); }
 .nav-section:last-child { border-right: none; }
 .nav-btn {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
@@ -350,11 +244,7 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
 }
 .nav-btn:hover, .nav-btn.active { color: var(--accent); background: rgba(0,212,255,0.08); }
 .nav-btn .nav-icon { font-size: 20px; }
-
-/* RIGHT SIDEBAR */
 .sidebar { grid-column: 2; }
-
-/* TOAST */
 .toast {
   position: fixed; top: 80px; right: 20px; z-index: 999;
   background: var(--card); border: 1px solid var(--accent3);
@@ -362,38 +252,79 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
   font-size: 13px; color: var(--accent3);
   transform: translateX(120%); transition: transform 0.3s;
   box-shadow: 0 0 20px rgba(0,255,157,0.2);
+  max-width: 280px;
 }
 .toast.show { transform: translateX(0); }
 .toast.error { border-color: var(--accent2); color: var(--accent2); }
-
-/* SECTION PANELS */
 .panel { display: none; }
 .panel.active { display: block; }
-
-/* FIREBASE INDICATOR */
-.fb-indicator {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 11px; color: var(--muted); letter-spacing: 1px;
-}
+.fb-indicator { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); letter-spacing: 1px; }
 .fb-dot { width:7px; height:7px; border-radius:50%; background:#333; transition:all 0.3s; }
 .fb-dot.ok { background: var(--accent3); box-shadow: 0 0 6px var(--accent3); }
-
-/* SCROLLBAR */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-/* SECTION HEADINGS */
-.section-header {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 20px;
+/* M3U OUTPUT CARD */
+.m3u-output-box {
+  background: var(--surface);
+  border: 1px solid var(--accent3);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
 }
-.section-title {
-  font-family: 'Orbitron', sans-serif; font-size: 14px;
-  color: var(--text); letter-spacing: 2px;
+.m3u-url-row {
+  display: flex; gap: 8px; align-items: center; margin-top: 8px;
+}
+.m3u-url-row input {
+  flex: 1; font-size: 11px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--accent3);
+  padding: 8px 12px;
+  font-family: monospace;
+  outline: none;
 }
 
-/* RESPONSIVE */
+/* OUTPUT MODE TOGGLE */
+.mode-toggle {
+  display: flex; gap: 0; margin-bottom: 16px;
+  border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+}
+.mode-btn {
+  flex: 1; padding: 12px 8px;
+  background: var(--surface);
+  border: none; cursor: pointer;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px; font-weight: 700;
+  color: var(--muted); letter-spacing: 1px;
+  transition: all 0.2s;
+}
+.mode-btn.active { background: var(--accent2); color: white; }
+.mode-btn:first-child { border-right: 1px solid var(--border); }
+
+/* AUDIO VISUALIZER */
+.audio-viz {
+  display: flex; align-items: flex-end; gap: 2px;
+  height: 32px; margin-top: 8px;
+}
+.audio-bar {
+  flex: 1; background: var(--accent3);
+  border-radius: 2px 2px 0 0;
+  animation: audioBar 0.5s ease-in-out infinite alternate;
+  min-height: 3px;
+}
+.audio-bar:nth-child(2n) { background: var(--accent); animation-delay: 0.1s; }
+.audio-bar:nth-child(3n) { background: var(--accent2); animation-delay: 0.2s; }
+@keyframes audioBar { from{height:3px} to{height:100%} }
+.audio-viz.paused .audio-bar { animation: none; height: 3px; }
+
+/* PREVIEW AUDIO */
+.audio-test-row {
+  display: flex; gap: 8px; align-items: center; margin-top: 12px;
+}
+
 @media (max-width: 900px) {
   .main { grid-template-columns: 1fr; }
   .sidebar { grid-column: 1; }
@@ -419,13 +350,11 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
   </div>
 </div>
 
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<!-- MAIN -->
 <div class="main">
 
-  <!-- LEFT: PREVIEW + PANELS -->
+  <!-- LEFT COLUMN -->
   <div class="preview-section">
 
     <!-- PREVIEW -->
@@ -434,16 +363,26 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
       <div class="preview-label" id="liveLabel">● LIVE</div>
     </div>
     <div class="preview-controls">
-      <button class="btn btn-primary btn-sm" onclick="refreshPreview()">↻ Refresh Preview</button>
+      <button class="btn btn-primary btn-sm" onclick="refreshPreview()">↻ Refresh</button>
       <button class="btn btn-secondary btn-sm" onclick="openOverlay()">⛶ Full Screen</button>
+      <button class="btn btn-secondary btn-sm" onclick="testAudio()">🔊 Test Audio</button>
       <div style="flex:1"></div>
-      <div class="fb-indicator" id="syncStatus"><div class="fb-dot" id="syncDot"></div><span id="syncTxt">SYNCING</span></div>
+      <div class="fb-indicator"><div class="fb-dot" id="syncDot"></div><span id="syncTxt">SYNCING</span></div>
     </div>
+    <!-- Audio viz (shows when audio is playing) -->
+    <div class="audio-viz paused" id="audioViz" style="margin-top:8px;display:none">
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+    </div>
+    <audio id="audioTestEl" style="display:none" crossorigin="anonymous"></audio>
 
-    <!-- PANEL: VIDEO SOURCE -->
+    <!-- ===== PANEL: SOURCE ===== -->
     <div class="panel active" id="panel-source">
       <div class="card">
-        <div class="card-title"><span class="icon">🎬</span> VIDEO SOURCE</div>
+        <div class="card-title"><span>🎬</span> VIDEO SOURCE</div>
         <div class="source-tabs">
           <div class="tab active" onclick="setSourceTab('mp4',this)">MP4 FILE</div>
           <div class="tab" onclick="setSourceTab('m3u',this)">M3U LINK</div>
@@ -451,7 +390,7 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
         </div>
         <div id="src-mp4">
           <div class="input-group">
-            <label class="input-label">MP4 URL or Direct Link</label>
+            <label class="input-label">MP4 / Video URL</label>
             <input class="inp" type="text" id="mp4Url" placeholder="https://example.com/video.mp4">
           </div>
         </div>
@@ -467,11 +406,8 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
         </div>
         <div id="src-youtube" style="display:none">
           <div class="input-group">
-            <label class="input-label">YouTube Video/Playlist URL</label>
+            <label class="input-label">YouTube URL (yt-dlp auto-extracts)</label>
             <input class="inp" type="text" id="ytUrl" placeholder="https://youtube.com/watch?v=...">
-          </div>
-          <div style="font-size:11px;color:var(--muted);margin-top:-8px;margin-bottom:10px;">
-            ⚡ Auto-extracts stream URL using yt-dlp in GitHub Actions
           </div>
         </div>
         <div class="input-group">
@@ -485,50 +421,48 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
         <button class="btn btn-primary btn-full" onclick="saveSource()">💾 Save Source</button>
       </div>
 
-      <!-- VIDEO EDIT -->
       <div class="card">
-        <div class="card-title"><span class="icon">✂️</span> VIDEO TRANSFORM</div>
+        <div class="card-title"><span>✂️</span> VIDEO TRANSFORM</div>
         <div class="slider-group">
-          <label class="input-label">Zoom Scale</label>
+          <label class="input-label">Zoom</label>
           <div class="slider-row">
-            <input type="range" class="slider" id="zoomVal" min="50" max="200" value="100" oninput="updateTransform()">
+            <input type="range" class="slider" id="zoomVal" min="50" max="200" value="100" oninput="updateSliderDisplay('zoomVal','zoomDisplay','%')">
             <span class="slider-val" id="zoomDisplay">100%</span>
           </div>
         </div>
         <div class="slider-group">
           <label class="input-label">Position X</label>
           <div class="slider-row">
-            <input type="range" class="slider" id="posX" min="-50" max="50" value="0" oninput="updateTransform()">
+            <input type="range" class="slider" id="posX" min="-200" max="200" value="0" oninput="updateSliderDisplay('posX','posXDisplay','px')">
             <span class="slider-val" id="posXDisplay">0px</span>
           </div>
         </div>
         <div class="slider-group">
           <label class="input-label">Position Y</label>
           <div class="slider-row">
-            <input type="range" class="slider" id="posY" min="-50" max="50" value="0" oninput="updateTransform()">
+            <input type="range" class="slider" id="posY" min="-200" max="200" value="0" oninput="updateSliderDisplay('posY','posYDisplay','px')">
             <span class="slider-val" id="posYDisplay">0px</span>
           </div>
         </div>
         <div class="slider-group">
           <label class="input-label">Brightness</label>
           <div class="slider-row">
-            <input type="range" class="slider" id="brightness" min="50" max="150" value="100" oninput="updateTransform()">
+            <input type="range" class="slider" id="brightness" min="50" max="150" value="100" oninput="updateSliderDisplay('brightness','brightDisplay','%')">
             <span class="slider-val" id="brightDisplay">100%</span>
           </div>
         </div>
         <div class="slider-group">
           <label class="input-label">Volume</label>
           <div class="slider-row">
-            <input type="range" class="slider" id="volumeVal" min="0" max="200" value="100" oninput="updateTransform()">
+            <input type="range" class="slider" id="volumeVal" min="0" max="200" value="100" oninput="updateSliderDisplay('volumeVal','volDisplay','%')">
             <span class="slider-val" id="volDisplay">100%</span>
           </div>
         </div>
         <div class="input-group" style="margin-top:10px">
-          <label class="input-label">Audio Conversion</label>
+          <label class="input-label">Audio Mode</label>
           <select class="inp" id="audioConvert">
             <option value="stereo">Stereo (Default)</option>
             <option value="mono">Mono</option>
-            <option value="5.1">5.1 Surround</option>
             <option value="echo">Echo Effect</option>
             <option value="bass">Bass Boost</option>
           </select>
@@ -537,13 +471,11 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
       </div>
     </div>
 
-    <!-- PANEL: OVERLAY -->
+    <!-- ===== PANEL: OVERLAY ===== -->
     <div class="panel" id="panel-overlay">
-
-      <!-- LOGO -->
       <div class="card">
-        <div class="card-title"><span class="icon">🖼️</span> LOGO</div>
-        <div class="logo-upload-area" onclick="document.getElementById('logoFileInput').click()" id="logoDropArea">
+        <div class="card-title"><span>🖼️</span> LOGO OVERLAY</div>
+        <div class="logo-upload-area" onclick="document.getElementById('logoFileInput').click()">
           <div style="font-size:32px;margin-bottom:8px">📁</div>
           <div style="font-size:13px;color:var(--muted)">Click to Upload Logo</div>
           <div style="font-size:11px;color:var(--muted);margin-top:4px">or paste ImgBB URL below</div>
@@ -551,7 +483,7 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
           <input type="file" id="logoFileInput" accept="image/*" style="display:none" onchange="handleLogoUpload(this)">
         </div>
         <div class="input-group" style="margin-top:12px">
-          <label class="input-label">Logo URL (ImgBB)</label>
+          <label class="input-label">Logo URL</label>
           <input class="inp" type="text" id="logoUrl" placeholder="https://i.ibb.co/..." oninput="previewLogo(this.value)">
         </div>
         <div style="display:flex;gap:10px">
@@ -566,30 +498,29 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
             </select>
           </div>
           <div class="input-group" style="flex:1">
-            <label class="input-label">Size</label>
-            <input class="inp" type="number" id="logoSize" value="80" min="30" max="300" placeholder="px">
+            <label class="input-label">Size (px)</label>
+            <input class="inp" type="number" id="logoSize" value="80" min="30" max="300">
           </div>
         </div>
         <div class="input-group">
-          <label class="input-label">Logo Animation</label>
+          <label class="input-label">Animation</label>
           <div class="anim-grid">
-            <div class="anim-opt active" data-anim="pulse" onclick="selectAnim('logo','pulse',this)">PULSE</div>
-            <div class="anim-opt" data-anim="bounce" onclick="selectAnim('logo','bounce',this)">BOUNCE</div>
-            <div class="anim-opt" data-anim="rotate" onclick="selectAnim('logo','rotate',this)">ROTATE</div>
-            <div class="anim-opt" data-anim="glow" onclick="selectAnim('logo','glow',this)">GLOW</div>
-            <div class="anim-opt" data-anim="float" onclick="selectAnim('logo','float',this)">FLOAT</div>
-            <div class="anim-opt" data-anim="none" onclick="selectAnim('logo','none',this)">NONE</div>
+            <div class="anim-opt active" onclick="selectAnim('logo','pulse',this)">PULSE</div>
+            <div class="anim-opt" onclick="selectAnim('logo','bounce',this)">BOUNCE</div>
+            <div class="anim-opt" onclick="selectAnim('logo','rotate',this)">ROTATE</div>
+            <div class="anim-opt" onclick="selectAnim('logo','glow',this)">GLOW</div>
+            <div class="anim-opt" onclick="selectAnim('logo','float',this)">FLOAT</div>
+            <div class="anim-opt" onclick="selectAnim('logo','none',this)">NONE</div>
           </div>
         </div>
         <button class="btn btn-primary btn-full" onclick="saveLogo()">💾 Save Logo</button>
       </div>
 
-      <!-- TICKER BAR -->
       <div class="card">
-        <div class="card-title"><span class="icon">📰</span> TICKER / SCROLL BAR</div>
+        <div class="card-title"><span>📰</span> TICKER / SCROLL BAR</div>
         <div class="input-group">
           <label class="input-label">Ticker Text</label>
-          <textarea class="inp" id="tickerText" rows="3" placeholder="Breaking News • MiTV Network • 24/7 Live Stream • ..."></textarea>
+          <textarea class="inp" id="tickerText" rows="3" placeholder="Breaking News • MiTV Network • 24/7 Live • ..." oninput="document.getElementById('tickerPreviewText').textContent=this.value"></textarea>
         </div>
         <div style="display:flex;gap:10px">
           <div class="input-group" style="flex:1">
@@ -611,25 +542,24 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
           </div>
         </div>
         <div class="input-group">
-          <label class="input-label">Ticker Animation Style</label>
+          <label class="input-label">Style</label>
           <div class="anim-grid">
-            <div class="anim-opt active" data-anim="scroll" onclick="selectAnim('ticker','scroll',this)">SCROLL</div>
-            <div class="anim-opt" data-anim="fade" onclick="selectAnim('ticker','fade',this)">FADE</div>
-            <div class="anim-opt" data-anim="typewriter" onclick="selectAnim('ticker','typewriter',this)">TYPEWRITE</div>
-            <div class="anim-opt" data-anim="flash" onclick="selectAnim('ticker','flash',this)">FLASH</div>
-            <div class="anim-opt" data-anim="wave" onclick="selectAnim('ticker','wave',this)">WAVE</div>
-            <div class="anim-opt" data-anim="slide" onclick="selectAnim('ticker','slide',this)">SLIDE</div>
+            <div class="anim-opt active" onclick="selectAnim('ticker','scroll',this)">SCROLL</div>
+            <div class="anim-opt" onclick="selectAnim('ticker','fade',this)">FADE</div>
+            <div class="anim-opt" onclick="selectAnim('ticker','typewriter',this)">TYPEWRITE</div>
+            <div class="anim-opt" onclick="selectAnim('ticker','flash',this)">FLASH</div>
+            <div class="anim-opt" onclick="selectAnim('ticker','wave',this)">WAVE</div>
+            <div class="anim-opt" onclick="selectAnim('ticker','slide',this)">SLIDE</div>
           </div>
         </div>
         <div class="ticker-preview">
-          <div class="ticker-inner" id="tickerPreviewText">MiTV Network • 24/7 Live</div>
+          <div class="ticker-inner" id="tickerPreviewText">MiTV Network • 24/7 Live Stream</div>
         </div>
         <button class="btn btn-primary btn-full" style="margin-top:12px" onclick="saveTicker()">💾 Save Ticker</button>
       </div>
 
-      <!-- IMAGE UPLOAD (ImgBB) -->
       <div class="card">
-        <div class="card-title"><span class="icon">🖼️</span> IMAGE UPLOAD (ImgBB)</div>
+        <div class="card-title"><span>🖼️</span> IMAGE UPLOAD (ImgBB)</div>
         <div class="input-group">
           <input type="file" id="imgbbFile" accept="image/*" class="inp" style="font-size:12px">
         </div>
@@ -639,25 +569,56 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
       </div>
     </div>
 
-    <!-- PANEL: STREAM -->
+    <!-- ===== PANEL: STREAM ===== -->
     <div class="panel" id="panel-stream">
+
+      <!-- OUTPUT MODE SELECTOR -->
       <div class="card">
-        <div class="card-title"><span class="icon">📡</span> YOUTUBE STREAM SETTINGS</div>
-        <div class="input-group">
-          <label class="input-label">Stream Key</label>
-          <div class="stream-key-row" style="position:relative">
-            <input class="inp" type="password" id="streamKey" placeholder="xxxx-xxxx-xxxx-xxxx-xxxx">
-            <button class="eye-btn" onclick="toggleKey()">👁</button>
+        <div class="card-title"><span>📡</span> OUTPUT MODE</div>
+        <div class="mode-toggle">
+          <button class="mode-btn active" id="modeYt" onclick="setOutputMode('youtube')">▶ YOUTUBE RTMP</button>
+          <button class="mode-btn" id="modeM3u" onclick="setOutputMode('m3u')">📺 M3U / HLS OUTPUT</button>
+        </div>
+
+        <!-- YOUTUBE MODE -->
+        <div id="ytModePanel">
+          <div class="input-group">
+            <label class="input-label">YouTube Stream Key</label>
+            <div class="stream-key-row" style="position:relative">
+              <input class="inp" type="password" id="streamKey" placeholder="xxxx-xxxx-xxxx-xxxx-xxxx">
+              <button class="eye-btn" onclick="toggleKey()">👁</button>
+            </div>
+          </div>
+          <div class="input-group">
+            <label class="input-label">RTMP Server</label>
+            <select class="inp" id="rtmpServer">
+              <option value="rtmp://a.rtmp.youtube.com/live2">YouTube Primary — rtmp://a.rtmp.youtube.com/live2</option>
+              <option value="rtmp://b.rtmp.youtube.com/live2">YouTube Backup — rtmp://b.rtmp.youtube.com/live2</option>
+            </select>
           </div>
         </div>
-        <div class="input-group">
-          <label class="input-label">RTMP Server</label>
-          <select class="inp" id="rtmpServer">
-            <option value="rtmp://a.rtmp.youtube.com/live2">YouTube Primary</option>
-            <option value="rtmp://b.rtmp.youtube.com/live2">YouTube Backup</option>
-          </select>
+
+        <!-- M3U OUTPUT MODE -->
+        <div id="m3uModePanel" style="display:none">
+          <div style="background:rgba(0,255,157,0.05);border:1px solid var(--accent3);border-radius:10px;padding:12px;margin-bottom:12px;font-size:12px;color:var(--accent3);line-height:1.8">
+            📺 M3U Mode — Stream goes to HLS output.<br>
+            No YouTube key needed. Works with any IPTV player.<br>
+            GitHub Actions serves the stream on port 8080.
+          </div>
+          <div class="m3u-output-box" id="m3uOutputBox" style="display:none">
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">📋 GENERATED M3U LINK</div>
+            <div class="m3u-url-row">
+              <input type="text" id="m3uOutputUrl" readonly>
+              <button class="btn btn-success btn-sm" onclick="copyM3U()">📋 COPY</button>
+            </div>
+            <button class="btn btn-secondary btn-sm btn-full" style="margin-top:8px" onclick="downloadM3U()">⬇️ Download .m3u8 File</button>
+          </div>
+          <div id="m3uWaiting" style="font-size:12px;color:var(--muted);padding:10px 0">
+            ⏳ Start stream to generate M3U link...
+          </div>
         </div>
-        <div style="display:flex;gap:10px">
+
+        <div style="display:flex;gap:10px;margin-top:12px">
           <div class="input-group" style="flex:1">
             <label class="input-label">Resolution</label>
             <select class="inp" id="resolution">
@@ -683,31 +644,22 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
             <option value="2500">2500 kbps (480p)</option>
           </select>
         </div>
-        <button class="btn btn-primary btn-full" onclick="saveStreamSettings()">💾 Save Stream Settings</button>
+        <button class="btn btn-primary btn-full" onclick="saveStreamSettings()">💾 Save Settings</button>
       </div>
 
+      <!-- STREAM CONTROL -->
       <div class="stream-status">
-        <button class="big-stream-btn start" id="mainStreamBtn" onclick="triggerStream()">
-          ▶ START STREAM
-        </button>
+        <button class="big-stream-btn start" id="mainStreamBtn" onclick="triggerStream()">▶ START STREAM</button>
         <div class="stats-row">
-          <div class="stat-box">
-            <div class="stat-val" id="statUptime">--:--</div>
-            <div class="stat-label">UPTIME</div>
-          </div>
-          <div class="stat-box">
-            <div class="stat-val" id="statStatus">IDLE</div>
-            <div class="stat-label">STATUS</div>
-          </div>
-          <div class="stat-box">
-            <div class="stat-val" id="statLoop">0</div>
-            <div class="stat-label">LOOPS</div>
-          </div>
+          <div class="stat-box"><div class="stat-val" id="statUptime">--:--</div><div class="stat-label">UPTIME</div></div>
+          <div class="stat-box"><div class="stat-val" id="statStatus">IDLE</div><div class="stat-label">STATUS</div></div>
+          <div class="stat-box"><div class="stat-val" id="statLoop">0</div><div class="stat-label">LOOPS</div></div>
         </div>
       </div>
 
+      <!-- GITHUB ACTIONS -->
       <div class="card">
-        <div class="card-title"><span class="icon">⚙️</span> GITHUB ACTIONS CONFIG</div>
+        <div class="card-title"><span>⚙️</span> GITHUB ACTIONS DEPLOY</div>
         <div class="input-group">
           <label class="input-label">GitHub Repo (owner/repo)</label>
           <input class="inp" type="text" id="ghRepo" placeholder="your-username/mitv-stream">
@@ -718,16 +670,16 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
         </div>
         <button class="btn btn-success btn-full" onclick="dispatchWorkflow()">🚀 Trigger GitHub Actions</button>
         <div style="margin-top:12px;padding:12px;background:var(--surface);border-radius:8px;font-size:11px;color:var(--muted);line-height:1.8">
-          ℹ️ Workflow runs on GitHub servers 24/7. Your phone can be OFF.<br>
-          Auto-restarts on crash. Loops video forever. No VPS needed.
+          ℹ️ Runs on GitHub servers 24/7. Phone can be OFF.<br>
+          Auto-restarts every 6h. No VPS needed.
         </div>
       </div>
     </div>
 
-    <!-- PANEL: SETTINGS -->
+    <!-- ===== PANEL: SETTINGS ===== -->
     <div class="panel" id="panel-settings">
       <div class="card">
-        <div class="card-title"><span class="icon">🔔</span> CHANNEL BRANDING</div>
+        <div class="card-title"><span>🔔</span> CHANNEL BRANDING</div>
         <div class="input-group">
           <label class="input-label">Channel Name</label>
           <input class="inp" type="text" id="channelName" placeholder="MiTV Network">
@@ -749,11 +701,11 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
         <button class="btn btn-primary btn-full" onclick="saveBranding()">💾 Save Branding</button>
       </div>
       <div class="card">
-        <div class="card-title"><span class="icon">🗄️</span> FIREBASE DATA</div>
-        <button class="btn btn-secondary btn-full" onclick="exportData()" style="margin-bottom:8px">📤 Export Config JSON</button>
-        <button class="btn btn-secondary btn-full" onclick="document.getElementById('importFile').click()" style="margin-bottom:8px">📥 Import Config</button>
+        <div class="card-title"><span>🗄️</span> CONFIG BACKUP</div>
+        <button class="btn btn-secondary btn-full" style="margin-bottom:8px" onclick="exportData()">📤 Export JSON</button>
+        <button class="btn btn-secondary btn-full" style="margin-bottom:8px" onclick="document.getElementById('importFile').click()">📥 Import JSON</button>
         <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this)">
-        <button class="btn btn-danger btn-full" onclick="resetAll()">🗑️ Reset All Settings</button>
+        <button class="btn btn-danger btn-full" onclick="resetAll()">🗑️ Reset All</button>
       </div>
     </div>
 
@@ -762,27 +714,17 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
   <!-- RIGHT SIDEBAR -->
   <div class="sidebar">
 
-    <!-- QUICK STATUS -->
     <div class="card">
-      <div class="card-title"><span class="icon">📊</span> LIVE STATUS</div>
-      <div id="currentSourceDisplay" style="background:var(--surface);border-radius:8px;padding:10px;font-size:12px;color:var(--muted);margin-bottom:10px;word-break:break-all">
-        No source set
-      </div>
+      <div class="card-title"><span>📊</span> LIVE STATUS</div>
+      <div id="currentSourceDisplay" style="background:var(--surface);border-radius:8px;padding:10px;font-size:11px;color:var(--muted);margin-bottom:10px;word-break:break-all">No source set</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="stat-box">
-          <div class="stat-val" id="sideUptime">00:00</div>
-          <div class="stat-label">UPTIME</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-val" id="sideLoops" style="color:var(--accent3)">0</div>
-          <div class="stat-label">LOOPS</div>
-        </div>
+        <div class="stat-box"><div class="stat-val" id="sideUptime">00:00</div><div class="stat-label">UPTIME</div></div>
+        <div class="stat-box"><div class="stat-val" id="sideLoops" style="color:var(--accent3)">0</div><div class="stat-label">LOOPS</div></div>
       </div>
     </div>
 
-    <!-- QUICK STREAM START -->
     <div class="card">
-      <div class="card-title"><span class="icon">🔴</span> STREAM CONTROL</div>
+      <div class="card-title"><span>🔴</span> STREAM CONTROL</div>
       <button class="big-stream-btn start" id="sideStreamBtn" style="font-size:13px;padding:14px" onclick="triggerStream()">▶ START STREAM</button>
       <div style="margin-top:12px;display:flex;gap:8px">
         <button class="btn btn-secondary btn-sm" style="flex:1" onclick="restartStream()">↻ RESTART</button>
@@ -790,24 +732,37 @@ input[type=color] { width: 32px; height: 32px; border-radius: 8px; cursor: point
       </div>
     </div>
 
-    <!-- RECENT IMAGES -->
+    <!-- AUDIO CONTROL IN SIDEBAR -->
     <div class="card">
-      <div class="card-title"><span class="icon">🖼️</span> UPLOADED IMAGES</div>
+      <div class="card-title"><span>🔊</span> AUDIO MONITOR</div>
+      <div class="audio-viz paused" id="sideAudioViz">
+        <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+        <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+        <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+        <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      </div>
+      <div class="audio-test-row">
+        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="testAudio()">▶ Test Audio</button>
+        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="stopAudio()">■ Stop</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px" id="audioStatusTxt">No audio playing</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>🖼️</span> UPLOADED IMAGES</div>
       <div class="imgbb-gallery" id="sideGallery">
         <div style="font-size:11px;color:var(--muted);grid-column:1/-1">No images yet</div>
       </div>
     </div>
 
-    <!-- FIREBASE LOG -->
     <div class="card">
-      <div class="card-title"><span class="icon">📋</span> ACTIVITY LOG</div>
+      <div class="card-title"><span>📋</span> ACTIVITY LOG</div>
       <div id="activityLog" style="max-height:200px;overflow-y:auto;font-size:11px;color:var(--muted);line-height:1.8">
         <div>Waiting for events...</div>
       </div>
     </div>
 
   </div><!-- end sidebar -->
-
 </div><!-- end main -->
 
 <!-- BOTTOM NAV -->
@@ -859,23 +814,20 @@ window.fbGet = get;
 window.fbOnValue = onValue;
 window.fbUpdate = update;
 
-// Connection check
-const connRef = ref(db, '.info/connected');
-onValue(connRef, (snap) => {
-  const connected = snap.val();
-  document.getElementById('fbDot').className = 'fb-dot ' + (connected ? 'ok' : '');
-  document.getElementById('fbStatus').textContent = connected ? 'FIREBASE OK' : 'DISCONNECTED';
-  document.getElementById('syncDot').className = 'fb-dot ' + (connected ? 'ok' : '');
-  document.getElementById('syncTxt').textContent = connected ? 'LIVE SYNC' : 'OFFLINE';
+// Connection
+onValue(ref(db, '.info/connected'), (snap) => {
+  const ok = snap.val();
+  document.getElementById('fbDot').className = 'fb-dot ' + (ok ? 'ok' : '');
+  document.getElementById('fbStatus').textContent = ok ? 'FIREBASE OK' : 'DISCONNECTED';
+  document.getElementById('syncDot').className = 'fb-dot ' + (ok ? 'ok' : '');
+  document.getElementById('syncTxt').textContent = ok ? 'LIVE SYNC' : 'OFFLINE';
 });
 
-// Load all settings from Firebase on start
-const streamRef = ref(db, 'mitv_stream');
-onValue(streamRef, (snap) => {
+// Full realtime listener
+onValue(ref(db, 'mitv_stream'), (snap) => {
   const data = snap.val();
   if (!data) return;
 
-  // Source
   if (data.source) {
     const s = data.source;
     if (s.type === 'mp4') { document.getElementById('mp4Url').value = s.url || ''; setSourceTab('mp4'); }
@@ -885,7 +837,6 @@ onValue(streamRef, (snap) => {
     document.getElementById('currentSourceDisplay').textContent = s.url || 'No source';
   }
 
-  // Transform
   if (data.transform) {
     const t = data.transform;
     document.getElementById('zoomVal').value = t.zoom || 100; updateSliderDisplay('zoomVal','zoomDisplay','%');
@@ -896,7 +847,6 @@ onValue(streamRef, (snap) => {
     document.getElementById('audioConvert').value = t.audio || 'stereo';
   }
 
-  // Logo
   if (data.logo) {
     document.getElementById('logoUrl').value = data.logo.url || '';
     document.getElementById('logoPosition').value = data.logo.position || 'top-left';
@@ -904,7 +854,6 @@ onValue(streamRef, (snap) => {
     if (data.logo.url) previewLogo(data.logo.url);
   }
 
-  // Ticker
   if (data.ticker) {
     document.getElementById('tickerText').value = data.ticker.text || '';
     document.getElementById('tickerSpeed').value = data.ticker.speed || 'medium';
@@ -913,28 +862,28 @@ onValue(streamRef, (snap) => {
     document.getElementById('tickerPreviewText').textContent = data.ticker.text || 'MiTV Network';
   }
 
-  // Stream settings
   if (data.streamSettings) {
     document.getElementById('streamKey').value = data.streamSettings.key || '';
     document.getElementById('rtmpServer').value = data.streamSettings.rtmp || 'rtmp://a.rtmp.youtube.com/live2';
     document.getElementById('resolution').value = data.streamSettings.resolution || '1280x720';
     document.getElementById('fps').value = data.streamSettings.fps || '30';
     document.getElementById('bitrate').value = data.streamSettings.bitrate || '4000';
+    // Output mode
+    const mode = data.streamSettings.outputMode || 'youtube';
+    setOutputMode(mode, false);
   }
 
-  // Branding
   if (data.branding) {
     document.getElementById('channelName').value = data.branding.channelName || '';
     document.getElementById('watermarkText').value = data.branding.watermarkText || '';
     document.getElementById('overlayTheme').value = data.branding.theme || 'dark';
   }
 
-  // GitHub
   if (data.github) {
     document.getElementById('ghRepo').value = data.github.repo || '';
   }
 
-  // Stream status
+  // Status
   if (data.status) {
     const isLive = data.status.live;
     document.getElementById('liveIndicator').className = 'status-dot ' + (isLive ? 'live' : '');
@@ -943,19 +892,31 @@ onValue(streamRef, (snap) => {
     document.getElementById('statStatus').textContent = isLive ? 'LIVE' : 'IDLE';
     document.getElementById('statLoop').textContent = data.status.loops || 0;
     document.getElementById('sideLoops').textContent = data.status.loops || 0;
-
     const btn = document.getElementById('mainStreamBtn');
     const sideBtn = document.getElementById('sideStreamBtn');
     if (isLive) {
       btn.className = 'big-stream-btn stop'; btn.textContent = '■ STOP STREAM';
       sideBtn.className = 'big-stream-btn stop'; sideBtn.textContent = '■ STOP';
+      // Show audio viz when live
+      document.getElementById('audioViz').style.display = 'flex';
+      document.getElementById('audioViz').classList.remove('paused');
+      document.getElementById('sideAudioViz').classList.remove('paused');
     } else {
       btn.className = 'big-stream-btn start'; btn.textContent = '▶ START STREAM';
       sideBtn.className = 'big-stream-btn start'; sideBtn.textContent = '▶ START STREAM';
+      document.getElementById('audioViz').style.display = 'none';
+      document.getElementById('audioViz').classList.add('paused');
+      document.getElementById('sideAudioViz').classList.add('paused');
     }
   }
 
-  // Images
+  // M3U output link (when in m3u mode)
+  if (data.m3uOutput) {
+    document.getElementById('m3uOutputUrl').value = data.m3uOutput.url || '';
+    document.getElementById('m3uOutputBox').style.display = 'block';
+    document.getElementById('m3uWaiting').style.display = 'none';
+  }
+
   if (data.images) {
     const imgs = Object.values(data.images);
     renderSideGallery(imgs);
@@ -964,20 +925,18 @@ onValue(streamRef, (snap) => {
 });
 
 // Log listener
-const logRef = ref(db, 'mitv_stream/logs');
-onValue(logRef, (snap) => {
+onValue(ref(db, 'mitv_stream/logs'), (snap) => {
   const data = snap.val();
   if (!data) return;
-  const logs = Object.values(data).slice(-10).reverse();
-  const logEl = document.getElementById('activityLog');
-  logEl.innerHTML = logs.map(l => `<div style="border-bottom:1px solid var(--border);padding:3px 0">${l}</div>`).join('');
+  const logs = Object.values(data).slice(-20).reverse();
+  document.getElementById('activityLog').innerHTML =
+    logs.map(l => `<div style="border-bottom:1px solid var(--border);padding:3px 0">${l}</div>`).join('');
 });
 
 // Uptime counter
 let uptimeStart = null;
 setInterval(() => {
-  const liveText = document.getElementById('liveText').textContent;
-  if (liveText === 'LIVE') {
+  if (document.getElementById('liveText').textContent === 'LIVE') {
     if (!uptimeStart) uptimeStart = Date.now();
     const diff = Math.floor((Date.now() - uptimeStart) / 1000);
     const h = String(Math.floor(diff/3600)).padStart(2,'0');
@@ -990,7 +949,7 @@ setInterval(() => {
   } else { uptimeStart = null; }
 }, 1000);
 
-// SAVE FUNCTIONS
+// ── SAVE FUNCTIONS ──
 window.saveSource = async () => {
   const type = window.currentSourceTab || 'mp4';
   let url = '', index = 0;
@@ -999,8 +958,7 @@ window.saveSource = async () => {
   else if (type==='youtube') url = document.getElementById('ytUrl').value;
   if (!url) { showToast('Please enter a URL','error'); return; }
   await set(ref(db,'mitv_stream/source'), { type, url, index, loop: document.getElementById('loopMode').value });
-  addLog(`Source set: [${type.toUpperCase()}] ${url.substring(0,50)}...`);
-  document.getElementById('currentSourceDisplay').textContent = url;
+  addLog(`Source: [${type.toUpperCase()}] ${url.substring(0,50)}`);
   showToast('✅ Source Saved!');
 };
 
@@ -1013,14 +971,13 @@ window.saveTransform = async () => {
     volume: parseInt(document.getElementById('volumeVal').value),
     audio: document.getElementById('audioConvert').value
   });
-  addLog('Transform settings updated');
+  addLog('Transform updated');
   showToast('✅ Transform Saved!');
 };
 
 window.saveLogo = async () => {
-  const url = document.getElementById('logoUrl').value;
   await set(ref(db,'mitv_stream/logo'), {
-    url,
+    url: document.getElementById('logoUrl').value,
     position: document.getElementById('logoPosition').value,
     size: parseInt(document.getElementById('logoSize').value),
     animation: window.logoAnimation || 'pulse'
@@ -1038,7 +995,6 @@ window.saveTicker = async () => {
     color: document.getElementById('tickerColor').value,
     animation: window.tickerAnimation || 'scroll'
   });
-  document.getElementById('tickerPreviewText').textContent = text;
   addLog('Ticker updated');
   showToast('✅ Ticker Saved!');
 };
@@ -1049,7 +1005,8 @@ window.saveStreamSettings = async () => {
     rtmp: document.getElementById('rtmpServer').value,
     resolution: document.getElementById('resolution').value,
     fps: document.getElementById('fps').value,
-    bitrate: document.getElementById('bitrate').value
+    bitrate: document.getElementById('bitrate').value,
+    outputMode: window.currentOutputMode || 'youtube'
   });
   addLog('Stream settings updated');
   showToast('✅ Stream Settings Saved!');
@@ -1068,53 +1025,60 @@ window.saveBranding = async () => {
 window.triggerStream = async () => {
   const isLive = document.getElementById('liveText').textContent === 'LIVE';
   const newStatus = !isLive;
-  await update(ref(db,'mitv_stream/status'), { live: newStatus, command: newStatus ? 'start' : 'stop', commandAt: Date.now() });
+  await update(ref(db,'mitv_stream/status'), {
+    live: newStatus,
+    command: newStatus ? 'start' : 'stop',
+    commandAt: Date.now()
+  });
   addLog(newStatus ? '🔴 Stream STARTED' : '⬛ Stream STOPPED');
-  showToast(newStatus ? '🔴 Stream Started!' : '⬛ Stream Stopped');
+  showToast(newStatus ? '🔴 Stream Started!' : '⬛ Stopped');
 };
 
 window.restartStream = async () => {
   await update(ref(db,'mitv_stream/status'), { command: 'restart', commandAt: Date.now() });
-  addLog('↻ Restart command sent');
-  showToast('↻ Restart triggered');
+  addLog('↻ Restart sent');
+  showToast('↻ Restarting...');
 };
 
 window.stopStream = async () => {
   await update(ref(db,'mitv_stream/status'), { live: false, command: 'stop', commandAt: Date.now() });
-  addLog('⬛ Stream stopped');
-  showToast('⬛ Stream Stopped');
+  addLog('⬛ Stopped');
+  showToast('⬛ Stopped');
 };
 
 window.dispatchWorkflow = async () => {
   const repo = document.getElementById('ghRepo').value;
   const token = document.getElementById('ghToken').value;
-  if (!repo || !token) { showToast('Enter GitHub repo and token','error'); return; }
+  if (!repo || !token) { showToast('Enter repo + token','error'); return; }
   await set(ref(db,'mitv_stream/github'), { repo });
   try {
     const res = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/stream.yml/dispatches`, {
       method: 'POST',
-      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `token ${token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({ ref: 'main' })
     });
-    if (res.status === 204) { showToast('🚀 Workflow Triggered!'); addLog('GitHub Actions workflow dispatched'); }
+    if (res.status === 204) { showToast('🚀 Workflow Triggered!'); addLog('GitHub Actions triggered'); }
     else { showToast('GitHub error: ' + res.status, 'error'); }
   } catch(e) { showToast('Network error','error'); }
 };
 
 window.uploadToImgBB = async () => {
   const file = document.getElementById('imgbbFile').files[0];
-  if (!file) { showToast('Select an image first','error'); return; }
+  if (!file) { showToast('Select image first','error'); return; }
   document.getElementById('imgbbLoading').style.display = 'block';
-  const formData = new FormData(); formData.append('image', file);
+  const fd = new FormData(); fd.append('image', file);
   try {
-    const res = await fetch('https://api.imgbb.com/1/upload?key=6bdb23b28e7581721b28e46ce313308b', { method:'POST', body:formData });
+    const res = await fetch('https://api.imgbb.com/1/upload?key=6bdb23b28e7581721b28e46ce313308b', { method:'POST', body:fd });
     const data = await res.json();
     if (data.success) {
       const url = data.data.url;
-      const ts = Date.now();
-      await set(ref(db, `mitv_stream/images/${ts}`), url);
-      showToast('✅ Image Uploaded!');
-      addLog('Image uploaded: ' + url.substring(0,40));
+      await set(ref(db, `mitv_stream/images/${Date.now()}`), url);
+      showToast('✅ Uploaded!');
+      addLog('Image: ' + url.substring(0,40));
     }
   } catch(e) { showToast('Upload failed','error'); }
   document.getElementById('imgbbLoading').style.display = 'none';
@@ -1127,7 +1091,7 @@ window.addLog = async (msg) => {
 };
 
 window.exportData = async () => {
-  const snap = await get(ref(db, 'mitv_stream'));
+  const snap = await get(ref(db,'mitv_stream'));
   const blob = new Blob([JSON.stringify(snap.val(), null, 2)], {type:'application/json'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mitv-config.json'; a.click();
 };
@@ -1135,23 +1099,25 @@ window.exportData = async () => {
 window.importData = async (input) => {
   const file = input.files[0]; if (!file) return;
   const text = await file.text();
-  const data = JSON.parse(text);
-  await set(ref(db,'mitv_stream'), data);
-  showToast('✅ Config Imported!');
+  try {
+    const data = JSON.parse(text);
+    await set(ref(db,'mitv_stream'), data);
+    showToast('✅ Config Imported!');
+  } catch(e) { showToast('Invalid JSON','error'); }
 };
 
 window.resetAll = async () => {
-  if (!confirm('Reset ALL settings? This cannot be undone.')) return;
+  if (!confirm('Reset ALL settings? Cannot be undone.')) return;
   await set(ref(db,'mitv_stream'), null);
-  showToast('All settings reset');
+  showToast('All reset');
 };
 
 window.handleLogoUpload = async (input) => {
   const file = input.files[0]; if (!file) return;
-  const formData = new FormData(); formData.append('image', file);
+  const fd = new FormData(); fd.append('image', file);
   showToast('Uploading logo...');
   try {
-    const res = await fetch('https://api.imgbb.com/1/upload?key=6bdb23b28e7581721b28e46ce313308b', { method:'POST', body:formData });
+    const res = await fetch('https://api.imgbb.com/1/upload?key=6bdb23b28e7581721b28e46ce313308b', { method:'POST', body:fd });
     const data = await res.json();
     if (data.success) {
       const url = data.data.url;
@@ -1161,14 +1127,16 @@ window.handleLogoUpload = async (input) => {
     }
   } catch(e) { showToast('Upload failed','error'); }
 };
-
 </script>
 
 <script>
-// UI State
+// ── UI STATE ──
 window.currentSourceTab = 'mp4';
 window.logoAnimation = 'pulse';
 window.tickerAnimation = 'scroll';
+window.currentOutputMode = 'youtube';
+let audioCtx = null;
+let testAudioSrc = null;
 
 function setSourceTab(type, el) {
   window.currentSourceTab = type;
@@ -1180,9 +1148,21 @@ function setSourceTab(type, el) {
     el.classList.add('active');
   } else {
     document.querySelectorAll('.source-tabs .tab').forEach(t => {
-      t.classList.toggle('active', t.textContent.toLowerCase().includes(type==='mp4'?'mp4':type==='m3u'?'m3u':'you'));
+      const matches = (type==='mp4' && t.textContent.includes('MP4'))
+        || (type==='m3u' && t.textContent.includes('M3U'))
+        || (type==='youtube' && t.textContent.includes('YOUTUBE'));
+      t.classList.toggle('active', matches);
     });
   }
+}
+
+function setOutputMode(mode, fromUser=true) {
+  window.currentOutputMode = mode;
+  const isYt = mode === 'youtube';
+  document.getElementById('modeYt').classList.toggle('active', isYt);
+  document.getElementById('modeM3u').classList.toggle('active', !isYt);
+  document.getElementById('ytModePanel').style.display = isYt ? 'block' : 'none';
+  document.getElementById('m3uModePanel').style.display = isYt ? 'none' : 'block';
 }
 
 function showPanel(name) {
@@ -1191,14 +1171,6 @@ function showPanel(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const nb = document.getElementById('nav-'+name);
   if (nb) nb.classList.add('active');
-}
-
-function updateTransform() {
-  updateSliderDisplay('zoomVal','zoomDisplay','%');
-  updateSliderDisplay('posX','posXDisplay','px');
-  updateSliderDisplay('posY','posYDisplay','px');
-  updateSliderDisplay('brightness','brightDisplay','%');
-  updateSliderDisplay('volumeVal','volDisplay','%');
 }
 
 function updateSliderDisplay(sliderId, displayId, unit) {
@@ -1244,8 +1216,8 @@ function showToast(msg, type='') {
 
 function renderImgBBGallery(imgs) {
   const el = document.getElementById('imgbbGallery');
-  el.innerHTML = imgs.slice(-6).map(url => `
-    <div class="imgbb-thumb" onclick="document.getElementById('logoUrl').value='${url}';previewLogo('${url}')">
+  el.innerHTML = imgs.slice(-6).map(url =>
+    `<div class="imgbb-thumb" onclick="document.getElementById('logoUrl').value='${url}';previewLogo('${url}')">
       <img src="${url}" loading="lazy">
       <div class="use-btn">USE</div>
     </div>`).join('');
@@ -1253,16 +1225,77 @@ function renderImgBBGallery(imgs) {
 
 function renderSideGallery(imgs) {
   const el = document.getElementById('sideGallery');
-  el.innerHTML = imgs.slice(-6).map(url => `
-    <div class="imgbb-thumb" onclick="navigator.clipboard.writeText('${url}');showToast('Link Copied!')">
+  el.innerHTML = imgs.slice(-6).map(url =>
+    `<div class="imgbb-thumb" onclick="navigator.clipboard.writeText('${url}');showToast('Copied!')">
       <img src="${url}" loading="lazy">
       <div class="use-btn">COPY</div>
     </div>`).join('');
 }
 
-// Init sliders
-updateTransform();
-</script>
+// ── AUDIO TEST ──
+function testAudio() {
+  const srcUrl = (() => {
+    const tab = window.currentSourceTab;
+    if (tab === 'mp4') return document.getElementById('mp4Url').value;
+    if (tab === 'm3u') return document.getElementById('m3uUrl').value;
+    if (tab === 'youtube') return document.getElementById('ytUrl').value;
+    return '';
+  })();
 
+  if (!srcUrl) {
+    showToast('No source URL set. Set a source first.', 'error');
+    return;
+  }
+
+  const audioEl = document.getElementById('audioTestEl');
+  audioEl.src = srcUrl;
+  audioEl.volume = parseInt(document.getElementById('volumeVal').value) / 100;
+
+  audioEl.play().then(() => {
+    document.getElementById('audioStatusTxt').textContent = '🔊 Playing: ' + srcUrl.substring(0, 40);
+    document.getElementById('sideAudioViz').classList.remove('paused');
+    document.getElementById('audioViz').style.display = 'flex';
+    document.getElementById('audioViz').classList.remove('paused');
+    showToast('🔊 Audio Playing');
+  }).catch(e => {
+    showToast('Audio error: ' + e.message.substring(0,50), 'error');
+    document.getElementById('audioStatusTxt').textContent = '⚠️ Cannot play: CORS or format issue';
+  });
+}
+
+function stopAudio() {
+  const audioEl = document.getElementById('audioTestEl');
+  audioEl.pause();
+  audioEl.src = '';
+  document.getElementById('sideAudioViz').classList.add('paused');
+  document.getElementById('audioViz').classList.add('paused');
+  document.getElementById('audioStatusTxt').textContent = 'Audio stopped';
+}
+
+// M3U copy / download
+function copyM3U() {
+  const url = document.getElementById('m3uOutputUrl').value;
+  if (!url) { showToast('No M3U link yet', 'error'); return; }
+  navigator.clipboard.writeText(url).then(() => showToast('📋 M3U Link Copied!'));
+}
+
+function downloadM3U() {
+  const url = document.getElementById('m3uOutputUrl').value;
+  const channelName = document.getElementById('channelName').value || 'MiTV Network 24/7';
+  const logoUrl = document.getElementById('logoUrl').value || 'https://i.ibb.co/Xxpt0B54/IMG-20260415-223746-removebg-preview.png';
+  if (!url) { showToast('No M3U link yet', 'error'); return; }
+  const content = `#EXTM3U\n#EXTINF:-1 tvg-name="${channelName}" tvg-logo="${logoUrl}" group-title="MiTV",${channelName}\n${url}`;
+  const blob = new Blob([content], {type:'application/x-mpegurl'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mitv-stream.m3u'; a.click();
+  showToast('⬇️ M3U Downloaded!');
+}
+
+// Init
+updateSliderDisplay('zoomVal','zoomDisplay','%');
+updateSliderDisplay('posX','posXDisplay','px');
+updateSliderDisplay('posY','posYDisplay','px');
+updateSliderDisplay('brightness','brightDisplay','%');
+updateSliderDisplay('volumeVal','volDisplay','%');
+</script>
 </body>
 </html>
