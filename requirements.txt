@@ -15,3 +15,5 @@ python-dotenv==1.0.1
 gTTS==2.5.1
 pydub==0.25.1
 SpeechRecognition==3.10.4
+grpcio==1.64.1
+protobuf==4.25.3
