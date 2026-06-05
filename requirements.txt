@@ -1,16 +1,10 @@
-pyTelegramBotAPI
-requests
-fpdf2
-arabic-reshaper
-python-bidi
-duckduckgo-search
-firebase-admin
-beautifulsoup4
-googlesearch-python
-ascii-magic
-google-generativeai
-pillow
-python-dotenv
-gTTS
-pydub
-SpeechRecognition
+# MI AI PRO TITAN V21.0 — Requirements
+# Install: pip install -r requirements.txt
+
+pyTelegramBotAPI>=4.14.0
+requests>=2.31.0
+duckduckgo-search>=5.0.0
+fpdf2>=2.7.9
+arabic-reshaper>=3.0.0
+python-bidi>=0.4.2
+python-docx>=1.1.0
