@@ -255,6 +255,7 @@ jobs:
 
       - name: 🎨 Create Resources
         run: |
+          # Create colors.xml with proper attr definitions
           cat > android-app/app/src/main/res/values/colors.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
@@ -272,6 +273,16 @@ jobs:
               <color name="surface">#1e1e1e</color>
               <color name="text_primary">#ffffff</color>
               <color name="text_secondary">#b3b3b3</color>
+          </resources>
+          EOF
+
+          # Create attrs.xml for attribute definitions
+          cat > android-app/app/src/main/res/values/attrs.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <attr name="colorBackground" format="color" />
+              <attr name="textColorPrimary" format="color" />
+              <attr name="textColorSecondary" format="color" />
           </resources>
           EOF
 
@@ -294,7 +305,7 @@ jobs:
           cat > android-app/app/src/main/res/values/themes.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
-              <style name="Theme.MIAI" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+              <style name="Theme.MIAI" parent="Theme.MaterialComponents.DayNight">
                   <item name="colorPrimary">@color/primary</item>
                   <item name="colorPrimaryVariant">@color/primary_dark</item>
                   <item name="colorSecondary">@color/accent</item>
@@ -306,8 +317,8 @@ jobs:
                   <item name="colorOnSecondary">@color/black</item>
                   <item name="colorOnBackground">@color/text_primary</item>
                   <item name="colorOnSurface">@color/text_primary</item>
-                  <item name="textColorPrimary">@color/text_primary</item>
-                  <item name="textColorSecondary">@color/text_secondary</item>
+                  <item name="android:textColorPrimary">@color/text_primary</item>
+                  <item name="android:textColorSecondary">@color/text_secondary</item>
               </style>
 
               <style name="Theme.MIAI.NoActionBar">
