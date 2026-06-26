@@ -41,14 +41,17 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
 
       - name: 📦 Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
           api-levels: 34
           build-tools-version: '34.0.0'
-          ndk-version: '25.1.8937393'
+
+      - name: 🐘 Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
 
       - name: 🎨 Download App Icon
         run: |
@@ -73,7 +76,7 @@ jobs:
                   gradlePluginPortal()
               }
           }
-          
+
           dependencyResolutionManagement {
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
               repositories {
@@ -81,7 +84,7 @@ jobs:
                   mavenCentral()
               }
           }
-          
+
           rootProject.name = "MI AI"
           include(":app")
           EOF
@@ -99,10 +102,10 @@ jobs:
               id("com.android.application")
               id("org.jetbrains.kotlin.android")
           }
-          
+
           android {
               compileSdk = 34
-              
+
               defaultConfig {
                   applicationId = "com.muaaz.miai"
                   minSdk = 24
@@ -111,7 +114,7 @@ jobs:
                   versionName = System.getenv("VERSION_NAME") ?: "1.0.0"
                   vectorDrawables.useSupportLibrary = true
               }
-              
+
               signingConfigs {
                   create("release") {
                       storeFile = file("$rootDir/release.jks")
@@ -120,17 +123,17 @@ jobs:
                       keyPassword = System.getenv("KEY_PASSWORD") ?: "miai@2024"
                   }
               }
-              
+
               buildTypes {
                   debug {
-                      debuggable = true
+                      isDebuggable = true
                       isMinifyEnabled = false
                       versionNameSuffix = "-DEBUG"
                   }
                   release {
-                      debuggable = false
+                      isDebuggable = false
                       isMinifyEnabled = true
-                      shrinkResources = true
+                      isShrinkResources = true
                       proguardFiles(
                           getDefaultProguardFile("proguard-android-optimize.txt"),
                           "proguard-rules.pro"
@@ -138,27 +141,23 @@ jobs:
                       signingConfig = signingConfigs.getByName("release")
                   }
               }
-              
+
               compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_11
-                  targetCompatibility = JavaVersion.VERSION_11
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
               }
-              
+
               kotlinOptions {
-                  jvmTarget = "11"
+                  jvmTarget = "17"
               }
-              
+
               buildFeatures {
                   viewBinding = true
-                  aidl = false
-                  renderScript = false
-                  resValues = false
-                  shaders = false
               }
-              
+
               namespace = "com.muaaz.miai"
           }
-          
+
           dependencies {
               implementation("androidx.core:core-ktx:1.12.0")
               implementation("androidx.appcompat:appcompat:1.6.1")
@@ -177,7 +176,7 @@ jobs:
               implementation("io.coil-kt:coil-compose:2.4.0")
               implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
               implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
-              
+
               testImplementation("junit:junit:4.13.2")
               androidTestImplementation("androidx.test.ext:junit:1.1.5")
               androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
@@ -192,7 +191,7 @@ jobs:
           cat > android-app/app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-          
+
               <uses-permission android:name="android.permission.INTERNET" />
               <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
               <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
@@ -203,7 +202,7 @@ jobs:
               <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
               <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
               <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-          
+
               <application
                   android:allowBackup="true"
                   android:debuggable="false"
@@ -213,7 +212,7 @@ jobs:
                   android:supportsRtl="true"
                   android:theme="@style/Theme.MIAI"
                   android:usesCleartextTraffic="false">
-          
+
                   <activity
                       android:name=".MainActivity"
                       android:exported="true"
@@ -223,17 +222,17 @@ jobs:
                           <category android:name="android.intent.category.LAUNCHER" />
                       </intent-filter>
                   </activity>
-          
+
                   <activity
                       android:name=".ChatActivity"
                       android:exported="false" />
-          
+
                   <activity
                       android:name=".SettingsActivity"
                       android:exported="false" />
-          
+
               </application>
-          
+
           </manifest>
           EOF
 
@@ -241,7 +240,6 @@ jobs:
 
       - name: 🎨 Create Resources
         run: |
-          # Create colors.xml
           cat > android-app/app/src/main/res/values/colors.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
@@ -262,7 +260,6 @@ jobs:
           </resources>
           EOF
 
-          # Create strings.xml
           cat > android-app/app/src/main/res/values/strings.xml << 'EOF'
           <resources>
               <string name="app_name">MI AI</string>
@@ -279,7 +276,6 @@ jobs:
           </resources>
           EOF
 
-          # Create themes.xml
           cat > android-app/app/src/main/res/values/themes.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
@@ -298,7 +294,7 @@ jobs:
                   <item name="textColorPrimary">@color/text_primary</item>
                   <item name="textColorSecondary">@color/text_secondary</item>
               </style>
-          
+
               <style name="Theme.MIAI.NoActionBar">
                   <item name="windowActionBar">false</item>
                   <item name="windowNoTitle">true</item>
@@ -312,7 +308,7 @@ jobs:
         run: |
           cat > android-app/app/src/main/kotlin/com/muaaz/miai/MainActivity.kt << 'EOF'
           package com.muaaz.miai
-          
+
           import android.os.Bundle
           import android.widget.Button
           import android.widget.EditText
@@ -321,33 +317,33 @@ jobs:
           import androidx.appcompat.app.AppCompatActivity
           import androidx.recyclerview.widget.LinearLayoutManager
           import androidx.recyclerview.widget.RecyclerView
-          
+
           class MainActivity : AppCompatActivity() {
-          
+
               private lateinit var chatInput: EditText
               private lateinit var sendButton: Button
               private lateinit var chatRecyclerView: RecyclerView
               private lateinit var statusText: TextView
               private lateinit var progressBar: ProgressBar
-          
+
               override fun onCreate(savedInstanceState: Bundle?) {
                   super.onCreate(savedInstanceState)
                   setContentView(R.layout.activity_main)
-          
+
                   initializeViews()
                   setupListeners()
               }
-          
+
               private fun initializeViews() {
                   chatInput = findViewById(R.id.chat_input)
                   sendButton = findViewById(R.id.send_button)
                   chatRecyclerView = findViewById(R.id.chat_recycler)
                   statusText = findViewById(R.id.status_text)
                   progressBar = findViewById(R.id.progress_bar)
-          
+
                   chatRecyclerView.layoutManager = LinearLayoutManager(this)
               }
-          
+
               private fun setupListeners() {
                   sendButton.setOnClickListener {
                       val message = chatInput.text.toString().trim()
@@ -357,11 +353,11 @@ jobs:
                       }
                   }
               }
-          
+
               private fun sendMessage(message: String) {
                   statusText.text = "Processing: $message"
                   progressBar.visibility = android.view.View.VISIBLE
-          
+
                   // TODO: Connect to Groq API or your backend
                   statusText.text = "Response will appear here"
                   progressBar.visibility = android.view.View.GONE
@@ -373,7 +369,6 @@ jobs:
 
       - name: 📐 Create Layout Files
         run: |
-          # Create activity_main.xml
           cat > android-app/app/src/main/res/layout/activity_main.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -381,25 +376,25 @@ jobs:
               android:layout_height="match_parent"
               android:orientation="vertical"
               android:background="@color/background">
-          
+
               <androidx.appcompat.widget.Toolbar
                   android:id="@+id/toolbar"
                   android:layout_width="match_parent"
                   android:layout_height="?attr/actionBarSize"
                   android:background="@color/primary"
                   android:elevation="4dp" />
-          
+
               <FrameLayout
                   android:layout_width="match_parent"
                   android:layout_height="0dp"
                   android:layout_weight="1">
-          
+
                   <androidx.recyclerview.widget.RecyclerView
                       android:id="@+id/chat_recycler"
                       android:layout_width="match_parent"
                       android:layout_height="match_parent"
                       android:background="@color/background" />
-          
+
                   <ProgressBar
                       android:id="@+id/progress_bar"
                       android:layout_width="wrap_content"
@@ -407,14 +402,14 @@ jobs:
                       android:layout_gravity="center"
                       android:visibility="gone" />
               </FrameLayout>
-          
+
               <LinearLayout
                   android:layout_width="match_parent"
                   android:layout_height="wrap_content"
                   android:orientation="vertical"
                   android:background="@color/surface"
                   android:padding="8dp">
-          
+
                   <TextView
                       android:id="@+id/status_text"
                       android:layout_width="match_parent"
@@ -423,12 +418,12 @@ jobs:
                       android:textColor="@color/text_secondary"
                       android:textSize="12sp"
                       android:paddingBottom="4dp" />
-          
+
                   <LinearLayout
                       android:layout_width="match_parent"
                       android:layout_height="wrap_content"
                       android:orientation="horizontal">
-          
+
                       <EditText
                           android:id="@+id/chat_input"
                           android:layout_width="0dp"
@@ -440,7 +435,7 @@ jobs:
                           android:background="@color/background"
                           android:padding="12dp"
                           android:maxLines="3" />
-          
+
                       <Button
                           android:id="@+id/send_button"
                           android:layout_width="wrap_content"
@@ -459,62 +454,22 @@ jobs:
       - name: 🎨 Process App Icons
         run: |
           sudo apt-get update -qq && sudo apt-get install -y imagemagick
-          
-          # Convert and resize icon
+
           convert app-icon/icon.png -resize 192x192 android-app/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
           convert app-icon/icon.png -resize 144x144 android-app/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           convert app-icon/icon.png -resize 96x96 android-app/app/src/main/res/mipmap-xhdpi/ic_launcher.png
           convert app-icon/icon.png -resize 72x72 android-app/app/src/main/res/mipmap-hdpi/ic_launcher.png
           convert app-icon/icon.png -resize 48x48 android-app/app/src/main/res/mipmap-mdpi/ic_launcher.png
-          
+
           echo "✅ Icons processed"
 
       - name: 🔐 Setup Keystore
         run: |
           keytool -genkey -v -keystore android-app/release.jks -keyalg RSA -keysize 2048 -validity 10000 \
             -alias miai_key -storepass miai@2024 -keypass miai@2024 \
-            -dname "CN=Muaaz Iqbal,O=Muslim Islam Org,L=Pakistan,C=PK" 2>&1 | grep -E "key|Keystore|saved"
-          
+            -dname "CN=Muaaz Iqbal,O=Muslim Islam Org,L=Pakistan,C=PK" 2>&1 | grep -E "key|Keystore|saved" || true
+
           echo "✅ Keystore created"
-
-      - name: 🛠️ Build Gradle APK
-        id: build
-        run: |
-          cd android-app
-          chmod +x gradlew 2>/dev/null || true
-          
-          # Download gradle wrapper
-          mkdir -p gradle/wrapper
-          curl -L https://services.gradle.org/distributions/gradle-8.0-bin.zip -o gradle-8.0-bin.zip
-          unzip -q gradle-8.0-bin.zip -d gradle/wrapper/
-          
-          # Create wrapper
-          touch gradlew
-          echo "#!/bin/bash" > gradlew
-          echo 'exec ./gradle-wrapper/gradle-8.0/bin/gradle "$@"' >> gradlew
-          chmod +x gradlew
-          
-          # Build APK
-          ./gradlew clean assembleDebug \
-            -Pandroid.useAndroidX=true \
-            -Pandroid.enableJetifier=true \
-            --stacktrace 2>&1 | tail -100
-          
-          # Find APK
-          APK=$(find . -name "*.apk" -type f 2>/dev/null | head -1)
-          if [ -z "$APK" ]; then
-            echo "❌ APK not found, checking build output..."
-            ls -la app/build/outputs/ 2>/dev/null || echo "No outputs directory"
-            exit 1
-          fi
-          
-          echo "apk_path=$APK" >> $GITHUB_OUTPUT
-          echo "✅ APK built: $APK"
-
-      - name: 📦 Copy APK to Root
-        run: |
-          cp android-app/app/build/outputs/apk/debug/app-debug.apk ./MI-AI.apk || true
-          ls -lah *.apk 2>/dev/null || echo "No APK in root"
 
       - name: 🏷️ Generate Version
         id: version
@@ -523,15 +478,55 @@ jobs:
           if [ -z "$VERSION" ]; then
             VERSION="1.0.$(date +%Y%m%d.%H%M)"
           fi
+          BUILD_TYPE="${{ github.event.inputs.build_type }}"
+          if [ -z "$BUILD_TYPE" ]; then
+            BUILD_TYPE="debug"
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "📌 Build Version: $VERSION"
+          echo "build_type=$BUILD_TYPE" >> $GITHUB_OUTPUT
+          echo "build_date=$(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_OUTPUT
+          echo "📌 Build Version: $VERSION ($BUILD_TYPE)"
+
+      - name: 🛠️ Build Gradle APK
+        id: build
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.version }}
+        run: |
+          cd android-app
+
+          BUILD_TYPE="${{ steps.version.outputs.build_type }}"
+          if [ "$BUILD_TYPE" == "release" ]; then
+            TASK="assembleRelease"
+          else
+            TASK="assembleDebug"
+          fi
+
+          gradle "$TASK" \
+            -Pandroid.useAndroidX=true \
+            -Pandroid.enableJetifier=true \
+            --stacktrace
+
+          APK=$(find app/build/outputs/apk -name "*.apk" -type f | head -1)
+          if [ -z "$APK" ]; then
+            echo "❌ APK not found, checking build output..."
+            ls -la app/build/outputs/ 2>/dev/null || echo "No outputs directory"
+            exit 1
+          fi
+
+          echo "apk_path=$APK" >> $GITHUB_OUTPUT
+          echo "✅ APK built: $APK"
+
+      - name: 📦 Copy APK to Root
+        run: |
+          cp "android-app/${{ steps.build.outputs.apk_path }}" ./MI-AI.apk
+          ls -lah MI-AI.apk
 
       - name: 📤 Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: MI-AI-Kotlin-APK-${{ steps.version.outputs.version }}
           path: |
-            android-app/app/build/outputs/apk/debug/app-debug.apk
+            android-app/${{ steps.build.outputs.apk_path }}
             MI-AI.apk
           retention-days: 30
 
@@ -544,13 +539,13 @@ jobs:
           body: |
             # 🎯 MI AI - Muaaz Intelligence
             ## Kotlin Android App v${{ steps.version.outputs.version }}
-            
+
             ### 📱 Native Kotlin Development
-            
+
             This is a **native Android app** built with **Kotlin** and **Android Jetpack**.
-            
+
             ### ✨ Features
-            
+
             - 🤖 **AI Chat Interface** - Full-featured chat with Groq API
             - 📚 **Content Generation** - PDFs, Documents, Images
             - 🎨 **Beautiful UI** - Material Design 3
@@ -561,21 +556,21 @@ jobs:
             - 🌐 **Multilingual** - Multiple language support
             - ⚡ **Fast & Responsive** - Optimized performance
             - 🔒 **Secure** - HTTPS and encrypted communications
-            
+
             ### 🛠️ Technical Stack
-            
+
             - **Language**: Kotlin 1.9.0
             - **Framework**: Android Jetpack
             - **Target API**: 34 (Android 14)
             - **Min API**: 24 (Android 7.0)
-            - **Build System**: Gradle 8.0
+            - **Build System**: Gradle ${{ env.GRADLE_VERSION }}
             - **Architecture**: MVVM
             - **UI**: Material Design 3
             - **Networking**: OkHttp + Retrofit
             - **Async**: Kotlin Coroutines
-            
+
             ### 📥 Installation
-            
+
             1. **Download APK** from this release
             2. **Enable Unknown Sources**:
                - Settings → Security → Unknown Sources (ON)
@@ -585,73 +580,28 @@ jobs:
             4. **Launch**:
                - Find MI AI in app drawer
                - Tap to open
-            
+
             ### 📋 Requirements
-            
+
             - Android 7.0+ (API 24+)
             - 100 MB free storage
             - Internet connection
             - Permissions: Internet, Camera, Microphone, Storage
-            
-            ### 🎨 UI/UX Highlights
-            
-            - Dark theme optimized for OLED screens
-            - Smooth animations and transitions
-            - Material Design 3 components
-            - Responsive layout for all screen sizes
-            - Accessibility features built-in
-            
-            ### 🔧 API Integration
-            
-            - **Groq API** - Multi-model AI backend
-            - **REST API** - Clean API architecture
-            - **Key Rotation** - Secure API key management
-            - **Error Handling** - Graceful error recovery
-            
-            ### 📊 Performance
-            
-            - **APK Size**: ~40-60 MB
-            - **RAM Usage**: Optimized
-            - **Battery**: Efficient
-            - **Data Usage**: Minimal
-            
-            ### 🔐 Security
-            
-            - Signed APK
-            - HTTPS enforced
-            - No cleartext traffic
-            - API keys secured
-            - Permission-based access
-            
+
             ### 📝 Version Info
-            
+
             - **Version**: ${{ steps.version.outputs.version }}
-            - **Build Type**: Debug
-            - **Release Date**: $(date)
+            - **Build Type**: ${{ steps.version.outputs.build_type }}
+            - **Release Date**: ${{ steps.version.outputs.build_date }}
             - **Built With**: GitHub Actions
-            
-            ### 🚀 Next Steps
-            
-            1. Download and install the APK
-            2. Grant necessary permissions
-            3. Enjoy MI AI on your Android device!
-            4. Report bugs via GitHub issues
-            
-            ### 📞 Support
-            
-            - **Issues?** Create a GitHub issue
-            - **Feature requests?** Suggest via issues
-            - **Feedback?** Leave a comment
-            
+
             ---
-            
+
             **Built by Muaaz Iqbal** · Muslim Islam Org
-            
+
             بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
-            
-            ♪ *ilm aur fikr ka silsila*
           files: |
-            android-app/app/build/outputs/apk/debug/app-debug.apk
+            android-app/${{ steps.build.outputs.apk_path }}
             MI-AI.apk
           draft: false
           prerelease: false
@@ -663,31 +613,9 @@ jobs:
           echo "============================================"
           echo "✅ MI AI Kotlin Android App Built Successfully!"
           echo "============================================"
-          echo ""
-          echo "📱 Build Details:"
-          echo "   Version: ${{ steps.version.outputs.version }}"
-          echo "   Type: Kotlin Android Native"
-          echo "   API Target: 34 (Android 14)"
-          echo "   Min API: 24 (Android 7.0)"
-          echo ""
-          echo "📦 Output:"
-          echo "   APK File: app-debug.apk"
-          echo "   Size: ~40-60 MB"
-          echo "   Location: GitHub Releases"
-          echo ""
-          echo "🚀 Release:"
-          echo "   Version: v${{ steps.version.outputs.version }}"
-          echo "   Tag: GitHub Releases"
-          echo "   Download: Available immediately"
-          echo ""
-          echo "📥 Installation:"
-          echo "   1. Enable Unknown Sources"
-          echo "   2. Download APK"
-          echo "   3. Install"
-          echo "   4. Launch"
-          echo ""
-          echo "============================================"
-          echo "✨ Ready for distribution!"
+          echo "Version: ${{ steps.version.outputs.version }}"
+          echo "Build Type: ${{ steps.version.outputs.build_type }}"
+          echo "APK: ${{ steps.build.outputs.apk_path }}"
           echo "============================================"
 
       - name: 🔔 Notify on Failure
