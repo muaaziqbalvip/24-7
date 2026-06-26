@@ -33,37 +33,37 @@ jobs:
       packages: read
 
     steps:
-      - name: ðŸ“¥ Checkout Repository
+      - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: â˜• Setup Java JDK 17
+      - name: ☕ Setup Java JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
 
-      - name: ðŸ“¦ Setup Android SDK
+      - name: 📦 Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
           api-levels: 34
           build-tools-version: '34.0.0'
           ndk-version: '25.1.8937393'
 
-      - name: ðŸŽ¨ Download App Icon
+      - name: 🎨 Download App Icon
         run: |
           mkdir -p app-icon
           curl -L -o app-icon/icon.png "https://i.ibb.co/1t0KstMG/file-0000000090007208b1864eebb1423b3e.png"
-          echo "âœ… Icon downloaded"
+          echo "✅ Icon downloaded"
 
-      - name: ðŸ“± Create Kotlin Android Project Structure
+      - name: 📱 Create Kotlin Android Project Structure
         run: |
           mkdir -p android-app/app/src/main/kotlin/com/muaaz/miai
           mkdir -p android-app/app/src/main/res/{layout,drawable,values,mipmap-xxxhdpi,mipmap-xxhdpi,mipmap-xhdpi,mipmap-hdpi,mipmap-mdpi}
           mkdir -p android-app/app/src/androidTest/kotlin/com/muaaz/miai
-          echo "âœ… Project structure created"
+          echo "✅ Project structure created"
 
-      - name: ðŸ“‹ Create Gradle Build Files
+      - name: 📋 Create Gradle Build Files
         run: |
           cat > android-app/settings.gradle.kts << 'EOF'
           pluginManagement {
@@ -185,9 +185,9 @@ jobs:
           }
           EOF
 
-          echo "âœ… Gradle files created"
+          echo "✅ Gradle files created"
 
-      - name: ðŸ“ Create Android Manifest
+      - name: 📝 Create Android Manifest
         run: |
           cat > android-app/app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
@@ -237,9 +237,9 @@ jobs:
           </manifest>
           EOF
 
-          echo "âœ… AndroidManifest created"
+          echo "✅ AndroidManifest created"
 
-      - name: ðŸŽ¨ Create Resources
+      - name: 🎨 Create Resources
         run: |
           # Create colors.xml
           cat > android-app/app/src/main/res/values/colors.xml << 'EOF'
@@ -306,9 +306,9 @@ jobs:
           </resources>
           EOF
 
-          echo "âœ… Resources created"
+          echo "✅ Resources created"
 
-      - name: ðŸŽ¯ Create Main Activity (Kotlin)
+      - name: 🎯 Create Main Activity (Kotlin)
         run: |
           cat > android-app/app/src/main/kotlin/com/muaaz/miai/MainActivity.kt << 'EOF'
           package com.muaaz.miai
@@ -369,9 +369,9 @@ jobs:
           }
           EOF
 
-          echo "âœ… MainActivity created"
+          echo "✅ MainActivity created"
 
-      - name: ðŸ“ Create Layout Files
+      - name: 📐 Create Layout Files
         run: |
           # Create activity_main.xml
           cat > android-app/app/src/main/res/layout/activity_main.xml << 'EOF'
@@ -454,9 +454,9 @@ jobs:
           </LinearLayout>
           EOF
 
-          echo "âœ… Layouts created"
+          echo "✅ Layouts created"
 
-      - name: ðŸŽ¨ Process App Icons
+      - name: 🎨 Process App Icons
         run: |
           sudo apt-get update -qq && sudo apt-get install -y imagemagick
           
@@ -467,17 +467,17 @@ jobs:
           convert app-icon/icon.png -resize 72x72 android-app/app/src/main/res/mipmap-hdpi/ic_launcher.png
           convert app-icon/icon.png -resize 48x48 android-app/app/src/main/res/mipmap-mdpi/ic_launcher.png
           
-          echo "âœ… Icons processed"
+          echo "✅ Icons processed"
 
-      - name: ðŸ” Setup Keystore
+      - name: 🔐 Setup Keystore
         run: |
           keytool -genkey -v -keystore android-app/release.jks -keyalg RSA -keysize 2048 -validity 10000 \
             -alias miai_key -storepass miai@2024 -keypass miai@2024 \
             -dname "CN=Muaaz Iqbal,O=Muslim Islam Org,L=Pakistan,C=PK" 2>&1 | grep -E "key|Keystore|saved"
           
-          echo "âœ… Keystore created"
+          echo "✅ Keystore created"
 
-      - name: ðŸ› ï¸ Build Gradle APK
+      - name: 🛠️ Build Gradle APK
         id: build
         run: |
           cd android-app
@@ -503,20 +503,20 @@ jobs:
           # Find APK
           APK=$(find . -name "*.apk" -type f 2>/dev/null | head -1)
           if [ -z "$APK" ]; then
-            echo "âŒ APK not found, checking build output..."
+            echo "❌ APK not found, checking build output..."
             ls -la app/build/outputs/ 2>/dev/null || echo "No outputs directory"
             exit 1
           fi
           
           echo "apk_path=$APK" >> $GITHUB_OUTPUT
-          echo "âœ… APK built: $APK"
+          echo "✅ APK built: $APK"
 
-      - name: ðŸ“¦ Copy APK to Root
+      - name: 📦 Copy APK to Root
         run: |
           cp android-app/app/build/outputs/apk/debug/app-debug.apk ./MI-AI.apk || true
           ls -lah *.apk 2>/dev/null || echo "No APK in root"
 
-      - name: ðŸ·ï¸ Generate Version
+      - name: 🏷️ Generate Version
         id: version
         run: |
           VERSION="${{ github.event.inputs.version }}"
@@ -524,9 +524,9 @@ jobs:
             VERSION="1.0.$(date +%Y%m%d.%H%M)"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "ðŸ“Œ Build Version: $VERSION"
+          echo "📌 Build Version: $VERSION"
 
-      - name: ðŸ“¤ Upload Artifact
+      - name: 📤 Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: MI-AI-Kotlin-APK-${{ steps.version.outputs.version }}
@@ -535,34 +535,34 @@ jobs:
             MI-AI.apk
           retention-days: 30
 
-      - name: ðŸŽ‰ Create GitHub Release
+      - name: 🎉 Create GitHub Release
         if: success()
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.version.outputs.version }}
-          name: ðŸš€ MI AI Kotlin v${{ steps.version.outputs.version }}
+          name: 🚀 MI AI Kotlin v${{ steps.version.outputs.version }}
           body: |
-            # ðŸŽ¯ MI AI - Muaaz Intelligence
+            # 🎯 MI AI - Muaaz Intelligence
             ## Kotlin Android App v${{ steps.version.outputs.version }}
             
-            ### ðŸ“± Native Kotlin Development
+            ### 📱 Native Kotlin Development
             
             This is a **native Android app** built with **Kotlin** and **Android Jetpack**.
             
-            ### âœ¨ Features
+            ### ✨ Features
             
-            - ðŸ¤– **AI Chat Interface** - Full-featured chat with Groq API
-            - ðŸ“š **Content Generation** - PDFs, Documents, Images
-            - ðŸŽ¨ **Beautiful UI** - Material Design 3
-            - ðŸŒ™ **Dark Mode** - Modern dark theme
-            - ðŸ“ˆ **Trading Hub** - Forex analysis and education
-            - ðŸ•Œ **Islamic Features** - Quran content and knowledge
-            - ðŸ”Š **Voice Support** - Audio chat capabilities
-            - ðŸŒ **Multilingual** - Multiple language support
-            - âš¡ **Fast & Responsive** - Optimized performance
-            - ðŸ”’ **Secure** - HTTPS and encrypted communications
+            - 🤖 **AI Chat Interface** - Full-featured chat with Groq API
+            - 📚 **Content Generation** - PDFs, Documents, Images
+            - 🎨 **Beautiful UI** - Material Design 3
+            - 🌙 **Dark Mode** - Modern dark theme
+            - 📈 **Trading Hub** - Forex analysis and education
+            - 🕌 **Islamic Features** - Quran content and knowledge
+            - 🔊 **Voice Support** - Audio chat capabilities
+            - 🌐 **Multilingual** - Multiple language support
+            - ⚡ **Fast & Responsive** - Optimized performance
+            - 🔒 **Secure** - HTTPS and encrypted communications
             
-            ### ðŸ› ï¸ Technical Stack
+            ### 🛠️ Technical Stack
             
             - **Language**: Kotlin 1.9.0
             - **Framework**: Android Jetpack
@@ -574,11 +574,11 @@ jobs:
             - **Networking**: OkHttp + Retrofit
             - **Async**: Kotlin Coroutines
             
-            ### ðŸ“¥ Installation
+            ### 📥 Installation
             
             1. **Download APK** from this release
             2. **Enable Unknown Sources**:
-               - Settings â†’ Security â†’ Unknown Sources (ON)
+               - Settings → Security → Unknown Sources (ON)
             3. **Install APK**:
                - Tap the downloaded file
                - Click Install
@@ -586,14 +586,14 @@ jobs:
                - Find MI AI in app drawer
                - Tap to open
             
-            ### ðŸ“‹ Requirements
+            ### 📋 Requirements
             
             - Android 7.0+ (API 24+)
             - 100 MB free storage
             - Internet connection
             - Permissions: Internet, Camera, Microphone, Storage
             
-            ### ðŸŽ¨ UI/UX Highlights
+            ### 🎨 UI/UX Highlights
             
             - Dark theme optimized for OLED screens
             - Smooth animations and transitions
@@ -601,21 +601,21 @@ jobs:
             - Responsive layout for all screen sizes
             - Accessibility features built-in
             
-            ### ðŸ”§ API Integration
+            ### 🔧 API Integration
             
             - **Groq API** - Multi-model AI backend
             - **REST API** - Clean API architecture
             - **Key Rotation** - Secure API key management
             - **Error Handling** - Graceful error recovery
             
-            ### ðŸ“Š Performance
+            ### 📊 Performance
             
             - **APK Size**: ~40-60 MB
             - **RAM Usage**: Optimized
             - **Battery**: Efficient
             - **Data Usage**: Minimal
             
-            ### ðŸ” Security
+            ### 🔐 Security
             
             - Signed APK
             - HTTPS enforced
@@ -623,21 +623,21 @@ jobs:
             - API keys secured
             - Permission-based access
             
-            ### ðŸ“ Version Info
+            ### 📝 Version Info
             
             - **Version**: ${{ steps.version.outputs.version }}
             - **Build Type**: Debug
             - **Release Date**: $(date)
             - **Built With**: GitHub Actions
             
-            ### ðŸš€ Next Steps
+            ### 🚀 Next Steps
             
             1. Download and install the APK
             2. Grant necessary permissions
             3. Enjoy MI AI on your Android device!
             4. Report bugs via GitHub issues
             
-            ### ðŸ“ž Support
+            ### 📞 Support
             
             - **Issues?** Create a GitHub issue
             - **Feature requests?** Suggest via issues
@@ -645,11 +645,11 @@ jobs:
             
             ---
             
-            **Built by Muaaz Iqbal** Â· Muslim Islam Org
+            **Built by Muaaz Iqbal** · Muslim Islam Org
             
-            Ø¨ÙØ³Ù’Ù…Ù Ø§Ù„Ù„ÙŽÙ‘Ù‡Ù Ø§Ù„Ø±ÙŽÙ‘Ø­Ù’Ù…ÙŽÙ°Ù†Ù Ø§Ù„Ø±ÙŽÙ‘Ø­ÙÙŠÙ…Ù
+            بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
             
-            â™ª *ilm aur fikr ka silsila*
+            ♪ *ilm aur fikr ka silsila*
           files: |
             android-app/app/build/outputs/apk/debug/app-debug.apk
             MI-AI.apk
@@ -658,41 +658,41 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: âœ… Build Success Summary
+      - name: ✅ Build Success Summary
         run: |
           echo "============================================"
-          echo "âœ… MI AI Kotlin Android App Built Successfully!"
+          echo "✅ MI AI Kotlin Android App Built Successfully!"
           echo "============================================"
           echo ""
-          echo "ðŸ“± Build Details:"
+          echo "📱 Build Details:"
           echo "   Version: ${{ steps.version.outputs.version }}"
           echo "   Type: Kotlin Android Native"
           echo "   API Target: 34 (Android 14)"
           echo "   Min API: 24 (Android 7.0)"
           echo ""
-          echo "ðŸ“¦ Output:"
+          echo "📦 Output:"
           echo "   APK File: app-debug.apk"
           echo "   Size: ~40-60 MB"
           echo "   Location: GitHub Releases"
           echo ""
-          echo "ðŸš€ Release:"
+          echo "🚀 Release:"
           echo "   Version: v${{ steps.version.outputs.version }}"
           echo "   Tag: GitHub Releases"
           echo "   Download: Available immediately"
           echo ""
-          echo "ðŸ“¥ Installation:"
+          echo "📥 Installation:"
           echo "   1. Enable Unknown Sources"
           echo "   2. Download APK"
           echo "   3. Install"
           echo "   4. Launch"
           echo ""
           echo "============================================"
-          echo "âœ¨ Ready for distribution!"
+          echo "✨ Ready for distribution!"
           echo "============================================"
 
-      - name: ðŸ”” Notify on Failure
+      - name: 🔔 Notify on Failure
         if: failure()
         run: |
-          echo "âŒ Build Failed!"
+          echo "❌ Build Failed!"
           echo "Check workflow logs above for details"
           exit 1
