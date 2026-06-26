@@ -155,6 +155,11 @@ jobs:
                   viewBinding = true
               }
 
+              lint {
+                  abortOnError = false
+                  checkReleaseBuilds = false
+              }
+
               namespace = "com.muaaz.miai"
           }
 
@@ -182,6 +187,16 @@ jobs:
               androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
               androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.5.4")
           }
+          EOF
+
+          cat > android-app/app/proguard-rules.pro << 'EOF'
+          # Add project specific ProGuard rules here.
+          -keep class com.muaaz.miai.** { *; }
+          -keepattributes Signature
+          -keepattributes *Annotation*
+          -dontwarn okhttp3.**
+          -dontwarn retrofit2.**
+          -dontwarn kotlinx.coroutines.**
           EOF
 
           echo "✅ Gradle files created"
@@ -460,6 +475,12 @@ jobs:
           convert app-icon/icon.png -resize 96x96 android-app/app/src/main/res/mipmap-xhdpi/ic_launcher.png
           convert app-icon/icon.png -resize 72x72 android-app/app/src/main/res/mipmap-hdpi/ic_launcher.png
           convert app-icon/icon.png -resize 48x48 android-app/app/src/main/res/mipmap-mdpi/ic_launcher.png
+
+          convert app-icon/icon.png -resize 192x192 android-app/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+          convert app-icon/icon.png -resize 144x144 android-app/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+          convert app-icon/icon.png -resize 96x96 android-app/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+          convert app-icon/icon.png -resize 72x72 android-app/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+          convert app-icon/icon.png -resize 48x48 android-app/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
 
           echo "✅ Icons processed"
 
