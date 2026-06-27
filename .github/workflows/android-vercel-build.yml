@@ -424,11 +424,22 @@ jobs:
           mkdir -p android-app/app/src/main/res/mipmap-hdpi
           mkdir -p android-app/app/src/main/res/mipmap-mdpi
 
-          for size in 192 144 96 72 48; do
-              dir=$([ $size -eq 192 ] && echo "xxxhdpi" || [ $size -eq 144 ] && echo "xxhdpi" || [ $size -eq 96 ] && echo "xhdpi" || [ $size -eq 72 ] && echo "hdpi" || echo "mdpi")
-              convert app-icon/icon.png -resize ${size}x${size} android-app/app/src/main/res/mipmap-${dir}/ic_launcher.png
-              convert app-icon/icon.png -resize ${size}x${size} android-app/app/src/main/res/mipmap-${dir}/ic_launcher_round.png
-          done
+          convert app-icon/icon.png -resize 192x192 android-app/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          convert app-icon/icon.png -resize 192x192 android-app/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+
+          convert app-icon/icon.png -resize 144x144 android-app/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          convert app-icon/icon.png -resize 144x144 android-app/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+
+          convert app-icon/icon.png -resize 96x96 android-app/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          convert app-icon/icon.png -resize 96x96 android-app/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+
+          convert app-icon/icon.png -resize 72x72 android-app/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          convert app-icon/icon.png -resize 72x72 android-app/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+
+          convert app-icon/icon.png -resize 48x48 android-app/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          convert app-icon/icon.png -resize 48x48 android-app/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+
+          echo "✅ Icons created"
 
       - name: 🔐 Create Keystore
         run: |
