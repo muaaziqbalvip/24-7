@@ -11,7 +11,7 @@ env:
   ANDROID_SDK_VERSION: '34'
   BUILD_TOOLS_VERSION: '34.0.0'
   GRADLE_VERSION: '8.0'
-  WEB_URL: 'https://miai-chi.vercel.app/'
+  WEB_URL: 'https://muaaziqbalvip.github.io/MIAIWORLD/'
 
 jobs:
   build:
@@ -410,7 +410,7 @@ jobs:
                   setupCustomPullToRefresh()
                   setupNotifBannerDismiss()
 
-                  webView.loadUrl("https://miai-chi.vercel.app/")
+                  webView.loadUrl("https://muaaziqbalvip.github.io/MIAIWORLD/")
 
                   listenForRealtimeNotifications()
               }
@@ -836,7 +836,7 @@ jobs:
             ✅ Auto-notify on every new version release
 
             ## 📱 What it does
-            - Runs https://miai-chi.vercel.app/
+            - Runs https://muaaziqbalvip.github.io/MIAIWORLD/
             - Full file upload/download
             - Camera & microphone access for calling features
             - Realtime push notifications from Admin Panel
