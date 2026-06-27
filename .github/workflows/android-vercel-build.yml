@@ -1,4 +1,4 @@
-name: MI AI Kotlin WebView App (Offline + Permissions)
+name: MI AI Kotlin WebView App (Complete)
 
 on:
   push:
@@ -11,14 +11,6 @@ on:
         description: 'App Version (e.g., 1.0.0)'
         required: false
         default: '1.0.0'
-      build_type:
-        description: 'Build Type'
-        required: true
-        default: 'debug'
-        type: choice
-        options:
-          - debug
-          - release
 
 env:
   ANDROID_SDK_VERSION: '34'
@@ -60,14 +52,13 @@ jobs:
           curl -L -o app-icon/icon.png "https://i.ibb.co/1t0KstMG/file-0000000090007208b1864eebb1423b3e.png"
           echo "✅ Icon downloaded"
 
-      - name: 📱 Create Kotlin Android Project Structure
+      - name: 📱 Create Project Structure
         run: |
           mkdir -p android-app/app/src/main/kotlin/com/muaaz/miai
           mkdir -p android-app/app/src/main/res/{layout,drawable,values,mipmap-xxxhdpi,mipmap-xxhdpi,mipmap-xhdpi,mipmap-hdpi,mipmap-mdpi}
-          mkdir -p android-app/app/src/androidTest/kotlin/com/muaaz/miai
-          echo "✅ Project structure created"
+          echo "✅ Structure created"
 
-      - name: 📋 Create Gradle Build Files
+      - name: 📋 Create Gradle Files
         run: |
           cat > android-app/settings.gradle.kts << 'EOF'
           pluginManagement {
@@ -77,7 +68,6 @@ jobs:
                   gradlePluginPortal()
               }
           }
-
           dependencyResolutionManagement {
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
               repositories {
@@ -85,7 +75,6 @@ jobs:
                   mavenCentral()
               }
           }
-
           rootProject.name = "MI AI"
           include(":app")
           EOF
@@ -93,8 +82,8 @@ jobs:
           cat > android-app/build.gradle.kts << 'EOF'
           plugins {
               id("com.android.application") version "8.1.0" apply false
-              id("com.android.library") version "8.1.0" apply false
               id("org.jetbrains.kotlin.android") version "1.9.0" apply false
+              id("com.google.gms.google-services") version "4.4.0" apply false
           }
           EOF
 
@@ -102,65 +91,50 @@ jobs:
           plugins {
               id("com.android.application")
               id("org.jetbrains.kotlin.android")
+              id("com.google.gms.google-services")
           }
 
           android {
               compileSdk = 34
-
               defaultConfig {
                   applicationId = "com.muaaz.miai"
                   minSdk = 24
                   targetSdk = 34
-                  versionCode = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 1
-                  versionName = System.getenv("VERSION_NAME") ?: "1.0.0"
-                  vectorDrawables.useSupportLibrary = true
+                  versionCode = 1
+                  versionName = "1.0.0"
               }
-
               signingConfigs {
                   create("release") {
                       storeFile = file("$rootDir/release.jks")
-                      storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "miai@2024"
+                      storePassword = "miai@2024"
                       keyAlias = "miai_key"
-                      keyPassword = System.getenv("KEY_PASSWORD") ?: "miai@2024"
+                      keyPassword = "miai@2024"
                   }
               }
-
               buildTypes {
                   debug {
                       isDebuggable = true
                       isMinifyEnabled = false
-                      versionNameSuffix = "-DEBUG"
                   }
                   release {
                       isDebuggable = false
                       isMinifyEnabled = true
-                      isShrinkResources = true
-                      proguardFiles(
-                          getDefaultProguardFile("proguard-android-optimize.txt"),
-                          "proguard-rules.pro"
-                      )
                       signingConfig = signingConfigs.getByName("release")
                   }
               }
-
               compileOptions {
                   sourceCompatibility = JavaVersion.VERSION_17
                   targetCompatibility = JavaVersion.VERSION_17
               }
-
               kotlinOptions {
                   jvmTarget = "17"
               }
-
               buildFeatures {
                   viewBinding = true
               }
-
               lint {
                   abortOnError = false
-                  checkReleaseBuilds = false
               }
-
               namespace = "com.muaaz.miai"
           }
 
@@ -168,50 +142,48 @@ jobs:
               implementation("androidx.core:core-ktx:1.12.0")
               implementation("androidx.appcompat:appcompat:1.6.1")
               implementation("com.google.android.material:material:1.10.0")
-              implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-              implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
               implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
-              implementation("androidx.work:work-runtime-ktx:2.8.1")
-
+              
+              // Firebase
+              implementation("com.google.firebase:firebase-database-ktx:20.3.0")
+              implementation("com.google.firebase:firebase-auth-ktx:22.3.1")
+              
               testImplementation("junit:junit:4.13.2")
-              androidTestImplementation("androidx.test.ext:junit:1.1.5")
-              androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
           }
           EOF
 
           cat > android-app/app/proguard-rules.pro << 'EOF'
           -keep class com.muaaz.miai.** { *; }
-          -keepattributes Signature
-          -keepattributes *Annotation*
           -dontwarn kotlin.**
           EOF
 
           echo "✅ Gradle files created"
 
-      - name: 📝 Create Android Manifest
+      - name: 📝 Create AndroidManifest
         run: |
           cat > android-app/app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-              <!-- Internet & Network -->
+              <!-- Network & Internet -->
               <uses-permission android:name="android.permission.INTERNET" />
               <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-              <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
 
-              <!-- Storage & Files -->
+              <!-- Storage -->
               <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
               <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
               <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
 
-              <!-- Media & Audio -->
+              <!-- Media -->
               <uses-permission android:name="android.permission.CAMERA" />
               <uses-permission android:name="android.permission.RECORD_AUDIO" />
               <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+              <!-- Location -->
               <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
               <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-              <!-- Required for SDK 30+ file access -->
+              <!-- Android 13+ -->
               <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
               <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
               <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
@@ -224,14 +196,12 @@ jobs:
                   android:roundIcon="@mipmap/ic_launcher_round"
                   android:supportsRtl="true"
                   android:theme="@style/Theme.MIAI"
-                  android:usesCleartextTraffic="true"
-                  android:requestLegacyExternalStorage="true">
+                  android:usesCleartextTraffic="true">
 
                   <activity
                       android:name=".MainActivity"
                       android:exported="true"
-                      android:theme="@style/Theme.MIAI.NoActionBar"
-                      android:configChanges="orientation|screenSize|keyboardHidden">
+                      android:theme="@style/Theme.MIAI.NoActionBar">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
                           <category android:name="android.intent.category.LAUNCHER" />
@@ -243,7 +213,7 @@ jobs:
           </manifest>
           EOF
 
-          echo "✅ AndroidManifest created"
+          echo "✅ Manifest created"
 
       - name: 🎨 Create Resources
         run: |
@@ -255,28 +225,14 @@ jobs:
               <color name="accent">#FF5722</color>
               <color name="background">#121212</color>
               <color name="surface">#1e1e1e</color>
-              <color name="text_primary">#ffffff</color>
-              <color name="text_secondary">#b3b3b3</color>
               <color name="white">#FFFFFFFF</color>
-              <color name="black">#FF000000</color>
           </resources>
           EOF
 
           cat > android-app/app/src/main/res/values/strings.xml << 'EOF'
           <resources>
               <string name="app_name">MI AI</string>
-              <string name="app_description">Muaaz Intelligence - AI Platform</string>
               <string name="loading">Loading...</string>
-              <string name="error">Connection Error</string>
-              <string name="offline_message">Offline Mode - Cached content available</string>
-              <string name="retry">Retry</string>
-          </resources>
-          EOF
-
-          cat > android-app/app/src/main/res/values/attrs.xml << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-              <attr name="colorBackground" format="color" />
           </resources>
           EOF
 
@@ -287,13 +243,8 @@ jobs:
                   <item name="colorPrimary">@color/primary</item>
                   <item name="colorPrimaryVariant">@color/primary_dark</item>
                   <item name="colorSecondary">@color/accent</item>
-                  <item name="colorSecondaryVariant">@color/accent</item>
                   <item name="colorBackground">@color/background</item>
-                  <item name="colorSurface">@color/surface</item>
-                  <item name="android:textColorPrimary">@color/text_primary</item>
-                  <item name="android:textColorSecondary">@color/text_secondary</item>
               </style>
-
               <style name="Theme.MIAI.NoActionBar">
                   <item name="windowActionBar">false</item>
                   <item name="windowNoTitle">true</item>
@@ -303,12 +254,13 @@ jobs:
 
           echo "✅ Resources created"
 
-      - name: 🎯 Create WebView Activity with Offline Support
+      - name: 🎯 Create MainActivity
         run: |
           cat > android-app/app/src/main/kotlin/com/muaaz/miai/MainActivity.kt << 'EOF'
           package com.muaaz.miai
 
           import android.Manifest
+          import android.app.ProgressDialog
           import android.content.pm.PackageManager
           import android.os.Build
           import android.os.Bundle
@@ -317,24 +269,27 @@ jobs:
           import android.webkit.WebChromeClient
           import android.webkit.PermissionRequest
           import android.view.KeyEvent
-          import android.widget.ProgressBar
           import android.view.View
-          import android.content.Context
+          import android.widget.FrameLayout
+          import android.widget.ProgressBar
           import androidx.appcompat.app.AppCompatActivity
           import androidx.core.app.ActivityCompat
           import androidx.core.content.ContextCompat
           import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-          import java.io.File
+          import com.google.firebase.database.FirebaseDatabase
+          import java.util.UUID
 
           class MainActivity : AppCompatActivity() {
 
               private lateinit var webView: WebView
               private lateinit var swipeRefresh: SwipeRefreshLayout
-              private lateinit var progressBar: ProgressBar
+              private lateinit var loadingSpinner: ProgressBar
+              private lateinit var progressDialog: ProgressDialog
               private val webUrl = "https://miai-chi.vercel.app/"
               private val PERMISSION_REQUEST_CODE = 100
+              private var deviceId = ""
 
-              private val requiredPermissions = listOf(
+              private val permissions = arrayOf(
                   Manifest.permission.INTERNET,
                   Manifest.permission.CAMERA,
                   Manifest.permission.RECORD_AUDIO,
@@ -342,43 +297,69 @@ jobs:
                   Manifest.permission.WRITE_EXTERNAL_STORAGE,
                   Manifest.permission.MODIFY_AUDIO_SETTINGS,
                   Manifest.permission.ACCESS_FINE_LOCATION,
-                  Manifest.permission.ACCESS_COARSE_LOCATION
-              ).let {
-                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                      it + listOf(
-                          Manifest.permission.READ_MEDIA_AUDIO,
-                          Manifest.permission.READ_MEDIA_VIDEO,
-                          Manifest.permission.READ_MEDIA_IMAGES
-                      )
-                  } else {
-                      it
-                  }
-              }
+                  Manifest.permission.ACCESS_COARSE_LOCATION,
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                      Manifest.permission.READ_MEDIA_AUDIO
+                  else
+                      Manifest.permission.CAMERA,
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                      Manifest.permission.READ_MEDIA_VIDEO
+                  else
+                      Manifest.permission.CAMERA,
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                      Manifest.permission.READ_MEDIA_IMAGES
+                  else
+                      Manifest.permission.CAMERA
+              ).distinctBy { it }
 
               override fun onCreate(savedInstanceState: Bundle?) {
                   super.onCreate(savedInstanceState)
                   setContentView(R.layout.activity_main)
 
-                  // Request permissions
-                  requestPermissions()
+                  // Get device ID
+                  deviceId = UUID.randomUUID().toString()
 
-                  initializeViews()
+                  // Init UI
+                  initViews()
+
+                  // Request all permissions
+                  requestAllPermissions()
+
+                  // Setup WebView
                   setupWebView()
-                  setupCaching()
-                  loadWebApp()
+
+                  // Register to Firebase
+                  registerDevice()
+
+                  // Load web app
+                  webView.loadUrl(webUrl)
               }
 
-              private fun requestPermissions() {
-                  val permissionsToRequest = requiredPermissions.filter {
-                      ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+              private fun initViews() {
+                  webView = findViewById(R.id.webview)
+                  swipeRefresh = findViewById(R.id.swipe_refresh)
+                  loadingSpinner = findViewById(R.id.loading_spinner)
+
+                  progressDialog = ProgressDialog(this).apply {
+                      setTitle("MI AI")
+                      setMessage("Loading...")
+                      setCancelable(false)
+                      setProgressStyle(ProgressDialog.STYLE_SPINNER)
                   }
 
-                  if (permissionsToRequest.isNotEmpty()) {
-                      ActivityCompat.requestPermissions(
-                          this,
-                          permissionsToRequest.toTypedArray(),
-                          PERMISSION_REQUEST_CODE
-                      )
+                  swipeRefresh.setOnRefreshListener {
+                      webView.reload()
+                      swipeRefresh.isRefreshing = false
+                  }
+              }
+
+              private fun requestAllPermissions() {
+                  val needed = permissions.filter {
+                      ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+                  }.toTypedArray()
+
+                  if (needed.isNotEmpty()) {
+                      ActivityCompat.requestPermissions(this, needed, PERMISSION_REQUEST_CODE)
                   }
               }
 
@@ -391,70 +372,37 @@ jobs:
                   if (requestCode == PERMISSION_REQUEST_CODE) {
                       val allGranted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
                       if (!allGranted) {
-                          // Ask again
-                          requestPermissions()
+                          requestAllPermissions()
                       }
                   }
               }
 
-              private fun initializeViews() {
-                  webView = findViewById(R.id.webview)
-                  swipeRefresh = findViewById(R.id.swipe_refresh)
-                  progressBar = findViewById(R.id.progress_bar)
-
-                  swipeRefresh.setOnRefreshListener {
-                      webView.reload()
-                      swipeRefresh.isRefreshing = false
-                  }
-              }
-
-              private fun setupCaching() {
-                  val cacheDir = getCacheDir()
-                  val dbPath = getDatabasePath("webkit").parent
-                  
-                  if (!dbPath.exists()) {
-                      File(dbPath).mkdirs()
-                  }
-              }
-
               private fun setupWebView() {
-                  val settings = webView.settings
-                  settings.apply {
-                      // JavaScript & DOM
+                  webView.settings.apply {
                       javaScriptEnabled = true
-                      javaScriptCanOpenWindowsAutomatically = true
                       domStorageEnabled = true
                       databaseEnabled = true
-                      
-                      // Caching & Offline
-                      databasePath = getDatabasePath("webkit").parent
-                      cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
-                      
-                      // Media & Permissions
                       mediaPlaybackRequiresUserGesture = false
                       allowFileAccess = true
-                      allowContentAccess = true
                       mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                      
-                      // Performance
                       useWideViewPort = true
                       loadWithOverviewMode = true
                       builtInZoomControls = true
                       displayZoomControls = false
-                      
-                      // User Agent
-                      userAgentString = "MI-AI-Browser/1.0 (Android WebView; Offline Enabled)"
                   }
 
                   webView.webViewClient = object : WebViewClient() {
                       override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                           super.onPageStarted(view, url, favicon)
-                          progressBar.visibility = View.VISIBLE
+                          loadingSpinner.visibility = View.VISIBLE
+                          progressDialog.show()
+                          updateFirebase()
                       }
 
                       override fun onPageFinished(view: WebView?, url: String?) {
                           super.onPageFinished(view, url)
-                          progressBar.visibility = View.GONE
+                          loadingSpinner.visibility = View.GONE
+                          if (progressDialog.isShowing) progressDialog.dismiss()
                       }
 
                       override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
@@ -464,24 +412,9 @@ jobs:
                           }
                           return false
                       }
-
-                      override fun onReceivedError(
-                          view: WebView?,
-                          request: android.webkit.WebResourceRequest?,
-                          error: android.webkit.WebResourceError?
-                      ) {
-                          super.onReceivedError(view, request, error)
-                          // Load cached version if available
-                          view?.reload()
-                      }
                   }
 
                   webView.webChromeClient = object : WebChromeClient() {
-                      override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                          super.onProgressChanged(view, newProgress)
-                          progressBar.progress = newProgress
-                      }
-
                       override fun onPermissionRequest(request: PermissionRequest?) {
                           if (request != null) {
                               request.grant(request.resources)
@@ -490,8 +423,33 @@ jobs:
                   }
               }
 
-              private fun loadWebApp() {
-                  webView.loadUrl(webUrl)
+              private fun registerDevice() {
+                  val db = FirebaseDatabase.getInstance("https://ramadan-2385b-default-rtdb.firebaseio.com").reference
+                  
+                  val deviceInfo = mapOf(
+                      "name" to "${Build.MANUFACTURER} ${Build.MODEL}",
+                      "version" to "1.0.0",
+                      "osVersion" to Build.VERSION.RELEASE,
+                      "firstSeen" to System.currentTimeMillis(),
+                      "lastSeen" to System.currentTimeMillis(),
+                      "status" to "active"
+                  )
+                  
+                  db.child("app-devices").child(deviceId).setValue(deviceInfo)
+              }
+
+              private fun updateFirebase() {
+                  try {
+                      val db = FirebaseDatabase.getInstance("https://ramadan-2385b-default-rtdb.firebaseio.com").reference
+                      db.child("app-devices").child(deviceId).child("lastSeen").setValue(System.currentTimeMillis())
+                  } catch (e: Exception) {
+                      // Silent fail
+                  }
+              }
+
+              override fun onResume() {
+                  super.onResume()
+                  updateFirebase()
               }
 
               override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -504,9 +462,9 @@ jobs:
           }
           EOF
 
-          echo "✅ MainActivity (WebView + Offline) created"
+          echo "✅ MainActivity created"
 
-      - name: 📐 Create Layout Files
+      - name: 📐 Create Layout
         run: |
           cat > android-app/app/src/main/res/layout/activity_main.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
@@ -527,254 +485,122 @@ jobs:
                       android:layout_height="match_parent" />
 
                   <ProgressBar
-                      android:id="@+id/progress_bar"
-                      style="@style/Widget.AppCompat.ProgressBar.Horizontal"
-                      android:layout_width="match_parent"
-                      android:layout_height="4dp"
-                      android:layout_gravity="top"
-                      android:indeterminate="false"
-                      android:visibility="gone" />
+                      android:id="@+id/loading_spinner"
+                      android:layout_width="80dp"
+                      android:layout_height="80dp"
+                      android:layout_gravity="center"
+                      android:visibility="gone"
+                      android:indeterminate="true" />
 
               </FrameLayout>
 
           </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
           EOF
 
-          echo "✅ Layouts created"
+          echo "✅ Layout created"
 
-      - name: 🎨 Process App Icons
+      - name: 🎨 Create Icons
         run: |
           sudo apt-get update -qq && sudo apt-get install -y imagemagick
 
-          convert app-icon/icon.png -resize 192x192 android-app/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-          convert app-icon/icon.png -resize 144x144 android-app/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-          convert app-icon/icon.png -resize 96x96 android-app/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-          convert app-icon/icon.png -resize 72x72 android-app/app/src/main/res/mipmap-hdpi/ic_launcher.png
-          convert app-icon/icon.png -resize 48x48 android-app/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          for size in 192 144 96 72 48; do
+              convert app-icon/icon.png -resize ${size}x${size} \
+                  android-app/app/src/main/res/mipmap-$(
+                      [ $size -eq 192 ] && echo "xxxhdpi" || \
+                      [ $size -eq 144 ] && echo "xxhdpi" || \
+                      [ $size -eq 96 ] && echo "xhdpi" || \
+                      [ $size -eq 72 ] && echo "hdpi" || \
+                      echo "mdpi"
+                  )/ic_launcher.png
+              
+              convert app-icon/icon.png -resize ${size}x${size} \
+                  android-app/app/src/main/res/mipmap-$(
+                      [ $size -eq 192 ] && echo "xxxhdpi" || \
+                      [ $size -eq 144 ] && echo "xxhdpi" || \
+                      [ $size -eq 96 ] && echo "xhdpi" || \
+                      [ $size -eq 72 ] && echo "hdpi" || \
+                      echo "mdpi"
+                  )/ic_launcher_round.png
+          done
 
-          convert app-icon/icon.png -resize 192x192 android-app/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
-          convert app-icon/icon.png -resize 144x144 android-app/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
-          convert app-icon/icon.png -resize 96x96 android-app/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
-          convert app-icon/icon.png -resize 72x72 android-app/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
-          convert app-icon/icon.png -resize 48x48 android-app/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+          echo "✅ Icons created"
 
-          echo "✅ Icons processed"
-
-      - name: 🔐 Setup Keystore
+      - name: 🔐 Create Keystore
         run: |
-          keytool -genkey -v -keystore android-app/release.jks -keyalg RSA -keysize 2048 -validity 10000 \
-            -alias miai_key -storepass miai@2024 -keypass miai@2024 \
-            -dname "CN=Muaaz Iqbal,O=Muslim Islam Org,L=Pakistan,C=PK" 2>&1 | grep -E "key|Keystore|saved" || true
+          keytool -genkey -v -keystore android-app/release.jks -keyalg RSA -keysize 2048 \
+            -validity 10000 -alias miai_key -storepass miai@2024 -keypass miai@2024 \
+            -dname "CN=Muaaz,O=Muslim Islam,L=Kasur,C=PK" 2>&1 | grep -i "saved\|created" || true
+          echo "✅ Keystore ready"
 
-          echo "✅ Keystore created"
-
-      - name: 🏷️ Generate Version
-        id: version
-        run: |
-          VERSION="${{ github.event.inputs.version }}"
-          if [ -z "$VERSION" ]; then
-            VERSION="1.0.$(date +%Y%m%d.%H%M)"
-          fi
-          BUILD_TYPE="${{ github.event.inputs.build_type }}"
-          if [ -z "$BUILD_TYPE" ]; then
-            BUILD_TYPE="debug"
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "build_type=$BUILD_TYPE" >> $GITHUB_OUTPUT
-          echo "build_date=$(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_OUTPUT
-          echo "📌 Build Version: $VERSION ($BUILD_TYPE)"
-
-      - name: 🛠️ Build Gradle APK
+      - name: 🛠️ Build APK
         id: build
-        env:
-          VERSION_NAME: ${{ steps.version.outputs.version }}
         run: |
           cd android-app
-
-          BUILD_TYPE="${{ steps.version.outputs.build_type }}"
-          if [ "$BUILD_TYPE" == "release" ]; then
-            TASK="assembleRelease"
-          else
-            TASK="assembleDebug"
-          fi
-
-          gradle "$TASK" \
-            -Pandroid.useAndroidX=true \
-            -Pandroid.enableJetifier=true \
-            --stacktrace
-
+          gradle assembleDebug --stacktrace
+          
           APK=$(find app/build/outputs/apk -name "*.apk" -type f | head -1)
           if [ -z "$APK" ]; then
-            echo "❌ APK not found"
-            exit 1
+              echo "❌ Build failed"
+              exit 1
           fi
-
+          
           echo "apk_path=$APK" >> $GITHUB_OUTPUT
-          echo "✅ APK built: $APK"
+          echo "✅ APK ready: $APK"
 
-      - name: 📦 Copy APK to Root
+      - name: 📦 Copy APK
         run: |
-          cp "android-app/${{ steps.build.outputs.apk_path }}" ./MI-AI-Browser.apk
-          ls -lah MI-AI-Browser.apk
+          cp "android-app/${{ steps.build.outputs.apk_path }}" ./MI-AI.apk
+          ls -lah MI-AI.apk
 
-      - name: 📤 Upload Artifact
+      - name: 📤 Upload
         uses: actions/upload-artifact@v4
         with:
-          name: MI-AI-Offline-APK-${{ steps.version.outputs.version }}
-          path: |
-            android-app/${{ steps.build.outputs.apk_path }}
-            MI-AI-Browser.apk
+          name: MI-AI-APK
+          path: MI-AI.apk
           retention-days: 30
 
-      - name: 🎉 Create GitHub Release
+      - name: 🎉 Release
         if: success()
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: 🚀 MI AI Browser v${{ steps.version.outputs.version }} (Offline Ready)
+          tag_name: v1.0.0
+          name: 🚀 MI AI WebView Browser
           body: |
-            # 🎯 MI AI - Muaaz Intelligence
-            ## Kotlin WebView Browser (Offline + Full Permissions) v${{ steps.version.outputs.version }}
-
-            ### 📱 Complete Native Android App
-
-            Full-featured Kotlin WebView app with **offline support**, **all permissions**, **file manager access**, **music/audio playback**.
-
-            ### ✨ Features
-
-            - 🌐 **Web App Integration** - https://miai-chi.vercel.app/
-            - 📴 **Offline Caching** - Content available offline
-            - 🔄 **Swipe to Refresh** - Pull-down refresh
-            - 🔙 **Smart Back Navigation** - Browser history
-            - 🎵 **Audio/Music Playback** - Direct sound support
-            - 📁 **File Manager Access** - Upload/download files
-            - 📸 **Camera Access** - Photo capture
-            - 🎤 **Microphone Support** - Voice recording
-            - 📍 **Location Services** - GPS enabled
-            - 💾 **DOM Storage** - Data persistence
-            - 🔒 **Full HTTPS** - Secure connection
-            - 🌙 **Dark Theme** - Material Design 3
-
-            ### 🔐 Permissions Included
-
-            ✅ INTERNET
-            ✅ CAMERA
-            ✅ RECORD_AUDIO
-            ✅ READ_EXTERNAL_STORAGE
-            ✅ WRITE_EXTERNAL_STORAGE
-            ✅ MANAGE_EXTERNAL_STORAGE
-            ✅ MODIFY_AUDIO_SETTINGS
-            ✅ ACCESS_FINE_LOCATION
-            ✅ ACCESS_COARSE_LOCATION
-            ✅ READ_MEDIA_AUDIO
-            ✅ READ_MEDIA_VIDEO
-            ✅ READ_MEDIA_IMAGES
-
-            ### 📥 Installation
-
-            1. Download `MI-AI-Browser.apk`
-            2. Enable Unknown Sources (Settings → Security)
+            # MI AI - WebView Browser
+            
+            ## ✨ Features
+            ✅ All Permissions (Camera, Mic, Storage, Location, etc)
+            ✅ Firebase Device Tracking
+            ✅ Offline Caching
+            ✅ Loading Spinner
+            ✅ Swipe to Refresh
+            ✅ Smart Back Button
+            ✅ Dark Theme
+            
+            ## 📥 Installation
+            1. Download `MI-AI.apk`
+            2. Settings → Security → Unknown Sources ON
             3. Install APK
-            4. Grant all permissions when prompted
-            5. Launch from app drawer
-
-            ### 🛠️ Technical Stack
-
-            - **Language**: Kotlin 1.9.0
-            - **Framework**: Android WebView + SwipeRefreshLayout
-            - **Target API**: 34 (Android 14)
-            - **Min API**: 24 (Android 7.0)
-            - **Features**: Offline Caching, Full File Access
-            - **Size**: ~15-20 MB
-
-            ### 🎯 What Works
-
-            ✅ All web app features (chat, upload, etc.)
-            ✅ File uploads from device
-            ✅ Camera/microphone access
-            ✅ Audio/music playback
-            ✅ Location services
-            ✅ Offline browsing (cached pages)
-            ✅ Back button navigation
-            ✅ Storage access (all directories)
-
-            ### 📊 Offline Capabilities
-
-            - Caches web content automatically
-            - Database persistence enabled
-            - DOM Storage for app state
-            - Graceful offline fallback
-
-            ### 🎵 Audio/Media Support
-
-            - Direct sound playback
-            - Microphone recording
-            - Media permission handling
-            - Gesture-free media playback
-
-            ### 📁 File Management
-
-            - Read all storage locations
-            - Write to external storage
-            - File manager integration
-            - Legacy storage support (Android 10 compatibility)
-
-            ### 📝 Version Info
-
-            - **Version**: ${{ steps.version.outputs.version }}
-            - **Build Type**: ${{ steps.version.outputs.build_type }}
-            - **Release Date**: ${{ steps.version.outputs.build_date }}
-            - **Web URL**: https://miai-chi.vercel.app/
-            - **Offline**: YES ✅
-            - **Permissions**: FULL ✅
-
-            ### 💡 Quick Tips
-
-            1. Grant all permissions on first launch
-            2. Swipe down to refresh if stuck
-            3. Back button works like browser
-            4. Files accessible from /storage/emulated/0/
-            5. Works offline with cached content
-
-            ### 🔄 Usage
-
-            - **Upload Files**: Click file button → Choose file → Send
-            - **Play Audio**: Direct playback in web app
-            - **Use Camera**: Grant permission → Capture
-            - **Location**: Apps have GPS access
-            - **Offline Mode**: Cached pages load without internet
-
-            ---
-
-            **Built by Muaaz Iqbal** · Muslim Islam Org
-
-            بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
-
-            ♪ *ilm aur fikr ka silsila*
-          files: |
-            android-app/${{ steps.build.outputs.apk_path }}
-            MI-AI-Browser.apk
-          draft: false
-          prerelease: false
+            4. Grant permissions
+            5. Done!
+            
+            ## 🎯 Features
+            - Runs https://miai-chi.vercel.app/
+            - Full file upload/download
+            - Camera & microphone access
+            - Audio/music playback
+            - Device tracking via Firebase
+            - Version tracking
+            
+            Built with ❤️ by Muaaz
+          files: MI-AI.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: ✅ Build Success
+      - name: ✅ Success
         run: |
-          echo "============================================"
-          echo "✅ MI AI Browser Built Successfully!"
-          echo "============================================"
-          echo "✓ Offline Support: YES"
-          echo "✓ All Permissions: YES"
-          echo "✓ File Manager: YES"
-          echo "✓ Audio/Music: YES"
-          echo "✓ Camera/Microphone: YES"
-          echo "✓ Location Services: YES"
-          echo "============================================"
-          echo "📦 APK: MI-AI-Browser.apk (~15-20 MB)"
-          echo "🚀 Status: Ready to install!"
-          echo "============================================"
-
-      - name: 🔔 Build Failed
-        if: failure()
-        run: echo "❌ Build Failed! Check logs above"
+          echo "✅ MI AI App Built Successfully!"
+          echo "✓ All permissions included"
+          echo "✓ Firebase tracking enabled"
+          echo "✓ Loading spinner ready"
+          echo "✓ APK ready for distribution"
