@@ -143,7 +143,7 @@ jobs:
               implementation("androidx.appcompat:appcompat:1.6.1")
               implementation("com.google.android.material:material:1.10.0")
               implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
-              
+
               // Firebase
               implementation("com.google.firebase:firebase-database-ktx:20.3.0")
               implementation("com.google.firebase:firebase-auth-ktx:22.3.1")
@@ -236,20 +236,48 @@ jobs:
         run: |
           cat > android-app/app/google-services.json << 'EOF'
           {
-            "type": "service_account",
-            "project_id": "ramadan-2385b",
-            "private_key_id": "abc123",
-            "private_key": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA0Z3VS5JJcds3s2qy/pR5Z5BK2HLQs0H5pR6K7L8D1S9L5QKB\nrH5Kz8mP2QxC5vY6D9Z0B3Y1T2M4N5O6P7Q8R9S0T1U2V3W4X5Y6Z7A8B9C0D1E2\nF3G4H5I6J7K8L9M0N1O2P3Q4R5S6T7U8V9W0X1Y2Z3A4B5C6D7E8F9G0H1I2J3K4\nL5M6N7O8P9Q0R1S2T3U4V5W6X7Y8Z9A0B1C2D3E4F5G6H7I8J9K0L1M2N3O4P5\nQwIDLQABAoIBAF4dQ8R7K2L8L9M0N1O2P3Q4R5S6T7U8V9W0X1Y2Z3A4B5C6D7E8\nF9G0H1I2J3K4L5M6N7O8P9Q0R1S2T3U4V5W6X7Y8Z9A0B1C2D3E4F5G6H7I8J9K0\nL1M2N3O4P5Q6R7S8T9U0V1W2X3Y4Z5A6B7C8D9E0F1G2H3I4J5K6L7M8N9O0P1Q2\nR3S4T5U6V7W8X9Y0Z1A2B3C4D5E6F7G8H9I0J1K2L3M4N5O6P7Q8R9S0T1U2V3W4\nX5Y6Z7ECgYEA7Y/Z8A9B0C1D2E3F4G5H6I7J8K9L0M1N2O3P4Q5R6S7T8U9V0W1X2\nY3Z4A5B6C7D8E9F0G1H2I3J4K5L6M7N8O9P0Q1R2S3T4U5V6W7X8Y9Z0A1B2C3D4\nE5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6A7B8C9D0E1F2G3H4I5J6\nK7L8M9N0O1P2Q3R4S5T6U7V8W9X0Y1Z2A3B4C5D6E7F8G9H0I1J2K3L4M5N6O7P8\nQ9R0S1ECgYEA4Z5A6B7C8D9E0F1G2H3I4J5K6L7M8N9O0P1Q2R3S4T5U6V7W8X9\nY0Z1A2B3C4D5E6F7G8H9I0J1K2L3M4N5O6P7Q8R9S0T1U2V3W4X5Y6Z7A8B9C0D1\nE2F3G4H5I6J7K8L9M0N1O2P3Q4R5S6T7U8V9W0X1Y2Z3A4B5C6D7E8F9G0H1I2J3\nK4L5M6N7O8P9Q0R1S2T3U4V5W6X7Y8Z9A0B1C2D3E4F5G6H7I8J9K0L1M2N3O4P5\nQ6R7S8T9U0V1W2X3Y4Z5A6B7C8D9E0F1G2H3I4J5K6L7M8N9O0P1Q2R3S4T5U6V7\nW8X9Y0Z1A2B3C4D5ECgYEArI/sJ0tK1lL2mM3nN4oO5pP6qQ7rR8sS9tT0uU1vV2w\nW3xX4yY5zZ6A7B8C9D0E1F2G3H4I5J6K7L8M9N0O1P2Q3R4S5T6U7V8W9X0Y1Z2A3\nB4C5D6E7F8G9H0I1J2K3L4M5N6O7P8Q9R0S1T2U3V4W5X6Y7Z8A9B0C1D2E3F4G5H6\nI7J8K9L0M1N2O3P4Q5R6S7T8U9V0W1X2Y3Z4A5B6C7D8E9F0G1H2I3J4K5L6M7N8O9\nP0Q1R2S3T4U5V6W7X8Y9Z0ECgYBVb/cW0dX1eY2fZ3gA4hB5iC6jD7kE8lF9mG0nH1\noI2pJ3qK4lL5mM6nN7oO8pP9qQ0rR1sS2tT3uU4vV5wW6xX7yY8zZ9A0B1C2D3E4F5\nG6H7I8J9K0L1M2N3O4P5Q6R7S8T9U0V1W2X3Y4Z5A6B7C8D9E0F1G2H3I4J5K6L7M8\nN9O0P1Q2R3S4T5U6V7W8X9Y0Z1A2B3C4D5E6F7G8H9I0J1K2L3M4N5O6P7Q8R9S0T1\nU2V3W4X5Y6Z7A8B9C0D1E2F3G4H5I6J7K8L9M0N1O2P3Q4R5S6T7U8V9W0X1Y2Z3A4\nB5C6C7QQA==\n-----END RSA PRIVATE KEY-----",
-            "client_email": "firebase-adminsdk@ramadan-2385b.iam.gserviceaccount.com",
-            "client_id": "123456789",
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-            "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk%40ramadan-2385b.iam.gserviceaccount.com"
+            "project_info": {
+              "project_number": "882828936310",
+              "firebase_url": "https://ramadan-2385b-default-rtdb.firebaseio.com",
+              "project_id": "ramadan-2385b",
+              "storage_bucket": "ramadan-2385b.firebasestorage.app"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:882828936310:android:02574d0390aec517fe4b57",
+                  "android_client_info": {
+                    "package_name": "com.muaaz.miai"
+                  }
+                },
+                "oauth_client": [
+                  {
+                    "client_id": "882828936310-itknilv5rqn9pn6uvangeglnjjf7h8vo.apps.googleusercontent.com",
+                    "client_type": 3
+                  }
+                ],
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyB1I_MIxDQ1Vpbo1fArJZ6EIV3L9KLVQ3s"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": [
+                      {
+                        "client_id": "882828936310-itknilv5rqn9pn6uvangeglnjjf7h8vo.apps.googleusercontent.com",
+                        "client_type": 3
+                      }
+                    ]
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
           }
           EOF
 
-          echo "✅ google-services.json created"
+          echo "✅ google-services.json created (real Firebase Android config)"
 
       - name: 🎯 Create MainActivity
         run: |
@@ -257,28 +285,26 @@ jobs:
           package com.muaaz.miai
 
           import android.Manifest
-          import android.app.ProgressDialog
           import android.content.pm.PackageManager
           import android.os.Build
           import android.os.Bundle
-          import android.view.KeyEvent
           import android.view.View
+          import android.webkit.PermissionRequest
+          import android.webkit.WebChromeClient
           import android.webkit.WebView
           import android.webkit.WebViewClient
-          import android.webkit.WebChromeClient
-          import android.webkit.PermissionRequest
           import android.widget.ProgressBar
           import androidx.appcompat.app.AppCompatActivity
           import androidx.core.app.ActivityCompat
           import androidx.core.content.ContextCompat
           import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-          import com.google.firebase.database.FirebaseDatabase
 
           class MainActivity : AppCompatActivity() {
 
               private lateinit var webView: WebView
               private lateinit var swipeRefresh: SwipeRefreshLayout
               private lateinit var spinner: ProgressBar
+
               private val permissions = arrayOf(
                   Manifest.permission.INTERNET,
                   Manifest.permission.CAMERA,
@@ -370,17 +396,21 @@ jobs:
 
               private fun updateFirebaseStatus() {
                   try {
-                      val db = com.google.firebase.database.FirebaseDatabase.getInstance("https://ramadan-2385b-default-rtdb.firebaseio.com").reference
+                      val db = com.google.firebase.database.FirebaseDatabase
+                          .getInstance("https://ramadan-2385b-default-rtdb.firebaseio.com")
+                          .reference
                       val deviceInfo = mapOf(
                           "lastSeen" to System.currentTimeMillis(),
                           "version" to "1.0.0",
                           "osVersion" to Build.VERSION.RELEASE
                       )
-                      db.child("app-devices").child(android.os.Build.SERIAL).updateChildren(deviceInfo)
+                      db.child("app-devices").child(Build.SERIAL).updateChildren(deviceInfo)
                   } catch (e: Exception) {
                       // Silent fail
                   }
               }
+          }
+          EOF
 
       - name: 📐 Create Layout
         run: |
@@ -490,6 +520,7 @@ jobs:
             ✅ Swipe to Refresh
             ✅ Smart Back Button
             ✅ Dark Theme
+            ✅ Real Firebase Integration
 
             ## 📱 What it does
             - Runs https://miai-chi.vercel.app/
@@ -515,4 +546,5 @@ jobs:
           echo "✅ SUCCESS!"
           echo "✓ All permissions included"
           echo "✓ Loading spinner ready"
+          echo "✓ Real Firebase config applied"
           echo "✓ APK ready for distribution"
