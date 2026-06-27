@@ -1,4 +1,4 @@
-name: MI AI Kotlin WebView App (Error-Free)
+name: MI AI Kotlin WebView App v2 (Realtime + Calling)
 
 on:
   push:
@@ -11,7 +11,7 @@ env:
   ANDROID_SDK_VERSION: '34'
   BUILD_TOOLS_VERSION: '34.0.0'
   GRADLE_VERSION: '8.0'
-  WEB_URL: 'https://muaaziqbalvip.github.io/MIAIWORLD/'
+  WEB_URL: 'https://miai-chi.vercel.app/'
 
 jobs:
   build:
@@ -48,7 +48,7 @@ jobs:
       - name: 📱 Create Project
         run: |
           mkdir -p android-app/app/src/main/kotlin/com/muaaz/miai
-          mkdir -p android-app/app/src/main/res/{layout,values,mipmap-xxxhdpi,mipmap-xxhdpi,mipmap-xhdpi,mipmap-hdpi,mipmap-mdpi}
+          mkdir -p android-app/app/src/main/res/{layout,values,drawable,mipmap-xxxhdpi,mipmap-xxhdpi,mipmap-xhdpi,mipmap-hdpi,mipmap-mdpi}
 
       - name: 📋 Create Gradle Files
         run: |
@@ -100,8 +100,8 @@ jobs:
                   applicationId = "com.muaaz.miai"
                   minSdk = 24
                   targetSdk = 34
-                  versionCode = 1
-                  versionName = "1.0.0"
+                  versionCode = 2
+                  versionName = "2.0.0"
               }
               signingConfigs {
                   create("release") {
@@ -147,6 +147,7 @@ jobs:
               // Firebase
               implementation("com.google.firebase:firebase-database-ktx:20.3.0")
               implementation("com.google.firebase:firebase-auth-ktx:22.3.1")
+              implementation("com.google.firebase:firebase-messaging-ktx:23.4.0")
               implementation("com.google.firebase:firebase-bom:33.0.0")
           }
           EOF
@@ -163,16 +164,26 @@ jobs:
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
               <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
               <uses-permission android:name="android.permission.CAMERA" />
               <uses-permission android:name="android.permission.RECORD_AUDIO" />
+              <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+              <uses-permission android:name="android.permission.BLUETOOTH" />
+              <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
               <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
               <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
               <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
-              <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
               <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
               <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
               <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
               <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+              <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+              <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+              <uses-feature android:name="android.hardware.camera" android:required="false" />
+              <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+              <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
               <application
                   android:allowBackup="true"
@@ -182,11 +193,13 @@ jobs:
                   android:roundIcon="@mipmap/ic_launcher_round"
                   android:supportsRtl="true"
                   android:theme="@style/Theme.MIAI"
-                  android:usesCleartextTraffic="true">
+                  android:usesCleartextTraffic="true"
+                  android:hardwareAccelerated="true">
 
                   <activity
                       android:name=".MainActivity"
                       android:exported="true"
+                      android:configChanges="orientation|screenSize|keyboardHidden"
                       android:theme="@style/Theme.MIAI.NoActionBar">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
@@ -208,6 +221,8 @@ jobs:
               <color name="primary_dark">#1a1a2e</color>
               <color name="background">#121212</color>
               <color name="white">#FFFFFFFF</color>
+              <color name="accent">#FF5722</color>
+              <color name="banner_bg">#1a1a2e</color>
           </resources>
           EOF
 
@@ -230,6 +245,30 @@ jobs:
                   <item name="windowNoTitle">true</item>
               </style>
           </resources>
+          EOF
+
+      - name: 🎨 Create Drawables (Custom Refresh Animation)
+        run: |
+          cat > android-app/app/src/main/res/drawable/banner_gradient.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+              <gradient
+                  android:angle="45"
+                  android:startColor="#4a90e2"
+                  android:endColor="#1a1a2e" />
+              <corners android:radius="14dp" />
+          </shape>
+          EOF
+
+          cat > android-app/app/src/main/res/drawable/banner_urgent_gradient.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <shape xmlns:android="http://schemas.android.com/apk/res/android">
+              <gradient
+                  android:angle="45"
+                  android:startColor="#FF5722"
+                  android:endColor="#b71c1c" />
+              <corners android:radius="14dp" />
+          </shape>
           EOF
 
       - name: 🔥 Create google-services.json
@@ -277,48 +316,80 @@ jobs:
           }
           EOF
 
-          echo "✅ google-services.json created (real Firebase Android config)"
-
-      - name: 🎯 Create MainActivity
+      - name: 🎯 Create MainActivity (Realtime Notifications + Custom Refresh + Calling)
         run: |
           cat > android-app/app/src/main/kotlin/com/muaaz/miai/MainActivity.kt << 'EOF'
           package com.muaaz.miai
 
           import android.Manifest
+          import android.animation.ObjectAnimator
+          import android.app.NotificationChannel
+          import android.app.NotificationManager
+          import android.content.Context
           import android.content.pm.PackageManager
+          import android.graphics.Color
           import android.os.Build
           import android.os.Bundle
+          import android.os.Handler
+          import android.os.Looper
+          import android.util.Log
           import android.view.View
+          import android.view.animation.OvershootInterpolator
+          import android.webkit.JavascriptInterface
           import android.webkit.PermissionRequest
           import android.webkit.WebChromeClient
           import android.webkit.WebView
           import android.webkit.WebViewClient
+          import android.widget.FrameLayout
+          import android.widget.LinearLayout
           import android.widget.ProgressBar
+          import android.widget.TextView
           import androidx.appcompat.app.AppCompatActivity
           import androidx.core.app.ActivityCompat
+          import androidx.core.app.NotificationCompat
           import androidx.core.content.ContextCompat
-          import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+          import com.google.firebase.database.DataSnapshot
+          import com.google.firebase.database.DatabaseError
+          import com.google.firebase.database.FirebaseDatabase
+          import com.google.firebase.database.ValueEventListener
 
           class MainActivity : AppCompatActivity() {
 
               private lateinit var webView: WebView
-              private lateinit var swipeRefresh: SwipeRefreshLayout
               private lateinit var spinner: ProgressBar
+              private lateinit var rootLayout: FrameLayout
+              private lateinit var pullIndicator: TextView
+              private lateinit var notifBanner: LinearLayout
+              private lateinit var notifTitleView: TextView
+              private lateinit var notifMessageView: TextView
+
+              private var lastNotificationTimestamp: String? = null
+              private val firebaseUrl = "https://ramadan-2385b-default-rtdb.firebaseio.com"
+              private val channelId = "mi_ai_notifications"
+
+              // Custom pull-to-refresh state (system swipe refresh removed)
+              private var pullStartY = 0f
+              private var isPulling = false
+              private val pullThreshold = 160f
 
               private val permissions = arrayOf(
                   Manifest.permission.INTERNET,
                   Manifest.permission.CAMERA,
                   Manifest.permission.RECORD_AUDIO,
+                  Manifest.permission.MODIFY_AUDIO_SETTINGS,
                   Manifest.permission.READ_EXTERNAL_STORAGE,
                   Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                  Manifest.permission.MODIFY_AUDIO_SETTINGS,
                   Manifest.permission.ACCESS_FINE_LOCATION,
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                      Manifest.permission.POST_NOTIFICATIONS else Manifest.permission.CAMERA,
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
                       Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.CAMERA,
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
                       Manifest.permission.READ_MEDIA_VIDEO else Manifest.permission.CAMERA,
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                      Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.CAMERA
+                      Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.CAMERA,
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+                      Manifest.permission.BLUETOOTH_CONNECT else Manifest.permission.CAMERA
               ).distinctBy { it }
 
               override fun onCreate(savedInstanceState: Bundle?) {
@@ -326,17 +397,22 @@ jobs:
                   setContentView(R.layout.activity_main)
 
                   webView = findViewById(R.id.webview)
-                  swipeRefresh = findViewById(R.id.swipe_refresh)
                   spinner = findViewById(R.id.spinner)
+                  rootLayout = findViewById(R.id.root_layout)
+                  pullIndicator = findViewById(R.id.pull_indicator)
+                  notifBanner = findViewById(R.id.notif_banner)
+                  notifTitleView = findViewById(R.id.notif_title)
+                  notifMessageView = findViewById(R.id.notif_message)
 
+                  createNotificationChannel()
                   requestPermissions()
                   setupWebView()
+                  setupCustomPullToRefresh()
+                  setupNotifBannerDismiss()
+
                   webView.loadUrl("https://miai-chi.vercel.app/")
 
-                  swipeRefresh.setOnRefreshListener {
-                      webView.reload()
-                      swipeRefresh.isRefreshing = false
-                  }
+                  listenForRealtimeNotifications()
               }
 
               private fun requestPermissions() {
@@ -360,6 +436,9 @@ jobs:
                       loadWithOverviewMode = true
                   }
 
+                  // Expose native bridge for calling features (mic/camera already granted natively)
+                  webView.addJavascriptInterface(NativeBridge(), "MiAiNative")
+
                   webView.webViewClient = object : WebViewClient() {
                       override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                           super.onPageStarted(view, url, favicon)
@@ -369,6 +448,7 @@ jobs:
                       override fun onPageFinished(view: WebView?, url: String?) {
                           super.onPageFinished(view, url)
                           spinner.visibility = View.GONE
+                          hidePullIndicator()
                       }
 
                       override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
@@ -380,13 +460,206 @@ jobs:
                       }
                   }
 
+                  // WebChromeClient grants mic/camera permission requests from the
+                  // WebRTC-based AI voice calling feature running inside the web app.
                   webView.webChromeClient = object : WebChromeClient() {
                       override fun onPermissionRequest(request: PermissionRequest?) {
-                          if (request != null) {
-                              request.grant(request.resources)
+                          runOnUiThread {
+                              request?.grant(request.resources)
                           }
                       }
                   }
+              }
+
+              // Native bridge exposed to JS as window.MiAiNative — lets the web app's
+              // WebRTC calling UI confirm native permission state before starting a call.
+              inner class NativeBridge {
+                  @JavascriptInterface
+                  fun hasMicPermission(): Boolean {
+                      return ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                  }
+
+                  @JavascriptInterface
+                  fun hasCameraPermission(): Boolean {
+                      return ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                  }
+
+                  @JavascriptInterface
+                  fun requestCallPermissions() {
+                      runOnUiThread { requestPermissions() }
+                  }
+              }
+
+              // ---------- Custom pull-to-refresh (replaces SwipeRefreshLayout) ----------
+              private fun setupCustomPullToRefresh() {
+                  webView.setOnTouchListener { _, event ->
+                      when (event.action) {
+                          android.view.MotionEvent.ACTION_DOWN -> {
+                              if (webView.scrollY == 0) {
+                                  pullStartY = event.rawY
+                                  isPulling = true
+                              }
+                              false
+                          }
+                          android.view.MotionEvent.ACTION_MOVE -> {
+                              if (isPulling && webView.scrollY == 0) {
+                                  val delta = event.rawY - pullStartY
+                                  if (delta > 0) {
+                                      showPullIndicator(delta)
+                                  }
+                              }
+                              false
+                          }
+                          android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                              if (isPulling) {
+                                  val delta = event.rawY - pullStartY
+                                  if (delta > pullThreshold) {
+                                      triggerCustomRefresh()
+                                  } else {
+                                      hidePullIndicator()
+                                  }
+                              }
+                              isPulling = false
+                              false
+                          }
+                          else -> false
+                      }
+                  }
+              }
+
+              private fun showPullIndicator(delta: Float) {
+                  pullIndicator.visibility = View.VISIBLE
+                  val progress = (delta / pullThreshold).coerceIn(0f, 1f)
+                  pullIndicator.alpha = progress
+                  pullIndicator.rotation = progress * 360f
+                  pullIndicator.translationY = (delta / 3).coerceAtMost(80f)
+              }
+
+              private fun hidePullIndicator() {
+                  pullIndicator.animate()
+                      .alpha(0f)
+                      .translationY(0f)
+                      .setDuration(200)
+                      .withEndAction { pullIndicator.visibility = View.GONE }
+                      .start()
+              }
+
+              private fun triggerCustomRefresh() {
+                  pullIndicator.visibility = View.VISIBLE
+                  val spin = ObjectAnimator.ofFloat(pullIndicator, "rotation", 0f, 360f)
+                  spin.duration = 600
+                  spin.repeatCount = ObjectAnimator.INFINITE
+                  spin.interpolator = OvershootInterpolator()
+                  spin.start()
+
+                  webView.reload()
+
+                  Handler(Looper.getMainLooper()).postDelayed({
+                      spin.cancel()
+                      hidePullIndicator()
+                  }, 900)
+              }
+
+              // ---------- Realtime Firebase notifications (system + in-app banner) ----------
+              private fun listenForRealtimeNotifications() {
+                  val db = FirebaseDatabase.getInstance(firebaseUrl)
+                  val notifRef = db.getReference("notifications").limitToLast(1)
+
+                  notifRef.addValueEventListener(object : ValueEventListener {
+                      override fun onDataChange(snapshot: DataSnapshot) {
+                          for (child in snapshot.children) {
+                              val title = child.child("title").getValue(String::class.java) ?: continue
+                              val message = child.child("message").getValue(String::class.java) ?: ""
+                              val timestamp = child.child("timestamp").getValue(String::class.java) ?: ""
+                              val priority = child.child("priority").getValue(String::class.java) ?: "normal"
+
+                              if (timestamp != lastNotificationTimestamp) {
+                                  lastNotificationTimestamp = timestamp
+                                  showSystemNotification(title, message, priority)
+                                  showInAppBanner(title, message, priority)
+                              }
+                          }
+                      }
+
+                      override fun onCancelled(error: DatabaseError) {
+                          Log.e("MiAi", "Notification listener cancelled: ${error.message}")
+                      }
+                  })
+              }
+
+              private fun createNotificationChannel() {
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                      val channel = NotificationChannel(
+                          channelId,
+                          "MI AI Updates",
+                          NotificationManager.IMPORTANCE_HIGH
+                      ).apply {
+                          description = "Realtime updates and announcements from MI AI"
+                          enableVibration(true)
+                      }
+                      val manager = getSystemService(NotificationManager::class.java)
+                      manager.createNotificationChannel(channel)
+                  }
+              }
+
+              private fun showSystemNotification(title: String, message: String, priority: String) {
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                      ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                      return
+                  }
+
+                  val importance = if (priority == "high") NotificationCompat.PRIORITY_MAX else NotificationCompat.PRIORITY_DEFAULT
+
+                  val notification = NotificationCompat.Builder(this, channelId)
+                      .setSmallIcon(android.R.drawable.ic_dialog_info)
+                      .setContentTitle(title)
+                      .setContentText(message)
+                      .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+                      .setPriority(importance)
+                      .setAutoCancel(true)
+                      .build()
+
+                  val manager = ContextCompat.getSystemService(this, NotificationManager::class.java)
+                  manager?.notify(System.currentTimeMillis().toInt(), notification)
+              }
+
+              private fun showInAppBanner(title: String, message: String, priority: String) {
+                  runOnUiThread {
+                      notifTitleView.text = title
+                      notifMessageView.text = message
+                      notifBanner.setBackgroundResource(
+                          if (priority == "high") R.drawable.banner_urgent_gradient else R.drawable.banner_gradient
+                      )
+
+                      notifBanner.visibility = View.VISIBLE
+                      notifBanner.translationY = -300f
+                      notifBanner.alpha = 0f
+                      notifBanner.animate()
+                          .translationY(0f)
+                          .alpha(1f)
+                          .setDuration(400)
+                          .setInterpolator(OvershootInterpolator(1.2f))
+                          .start()
+
+                      Handler(Looper.getMainLooper()).postDelayed({
+                          dismissBanner()
+                      }, 6000)
+                  }
+              }
+
+              private fun setupNotifBannerDismiss() {
+                  notifBanner.setOnClickListener {
+                      dismissBanner()
+                  }
+              }
+
+              private fun dismissBanner() {
+                  notifBanner.animate()
+                      .translationY(-300f)
+                      .alpha(0f)
+                      .setDuration(300)
+                      .withEndAction { notifBanner.visibility = View.GONE }
+                      .start()
               }
 
               override fun onResume() {
@@ -396,52 +669,94 @@ jobs:
 
               private fun updateFirebaseStatus() {
                   try {
-                      val db = com.google.firebase.database.FirebaseDatabase
-                          .getInstance("https://ramadan-2385b-default-rtdb.firebaseio.com")
-                          .reference
+                      val db = FirebaseDatabase.getInstance(firebaseUrl).reference
                       val deviceInfo = mapOf(
                           "lastSeen" to System.currentTimeMillis(),
-                          "version" to "1.0.0",
+                          "version" to "2.0.0",
                           "osVersion" to Build.VERSION.RELEASE
                       )
                       db.child("app-devices").child(Build.SERIAL).updateChildren(deviceInfo)
                   } catch (e: Exception) {
-                      // Silent fail
+                      Log.e("MiAi", "Failed to update device status: ${e.message}")
+                  }
+              }
+
+              override fun onBackPressed() {
+                  if (webView.canGoBack()) {
+                      webView.goBack()
+                  } else {
+                      super.onBackPressed()
                   }
               }
           }
           EOF
 
-      - name: 📐 Create Layout
+      - name: 📐 Create Layout (No SwipeRefreshLayout — custom pull + notification banner)
         run: |
           cat > android-app/app/src/main/res/layout/activity_main.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
-          <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+          <FrameLayout
               xmlns:android="http://schemas.android.com/apk/res/android"
-              android:id="@+id/swipe_refresh"
+              android:id="@+id/root_layout"
               android:layout_width="match_parent"
-              android:layout_height="match_parent">
+              android:layout_height="match_parent"
+              android:background="@color/background">
 
-              <FrameLayout
+              <WebView
+                  android:id="@+id/webview"
                   android:layout_width="match_parent"
-                  android:layout_height="match_parent"
-                  android:background="@color/background">
+                  android:layout_height="match_parent" />
 
-                  <WebView
-                      android:id="@+id/webview"
+              <TextView
+                  android:id="@+id/pull_indicator"
+                  android:layout_width="40dp"
+                  android:layout_height="40dp"
+                  android:layout_gravity="top|center_horizontal"
+                  android:layout_marginTop="24dp"
+                  android:text="🔄"
+                  android:textSize="24sp"
+                  android:gravity="center"
+                  android:visibility="gone" />
+
+              <ProgressBar
+                  android:id="@+id/spinner"
+                  android:layout_width="80dp"
+                  android:layout_height="80dp"
+                  android:layout_gravity="center"
+                  android:visibility="gone" />
+
+              <LinearLayout
+                  android:id="@+id/notif_banner"
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:layout_gravity="top"
+                  android:layout_margin="12dp"
+                  android:orientation="vertical"
+                  android:padding="16dp"
+                  android:background="@drawable/banner_gradient"
+                  android:elevation="12dp"
+                  android:visibility="gone">
+
+                  <TextView
+                      android:id="@+id/notif_title"
                       android:layout_width="match_parent"
-                      android:layout_height="match_parent" />
+                      android:layout_height="wrap_content"
+                      android:textColor="@color/white"
+                      android:textSize="16sp"
+                      android:textStyle="bold" />
 
-                  <ProgressBar
-                      android:id="@+id/spinner"
-                      android:layout_width="80dp"
-                      android:layout_height="80dp"
-                      android:layout_gravity="center"
-                      android:visibility="gone" />
+                  <TextView
+                      android:id="@+id/notif_message"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:layout_marginTop="4dp"
+                      android:textColor="@color/white"
+                      android:textSize="13sp"
+                      android:alpha="0.9" />
 
-              </FrameLayout>
+              </LinearLayout>
 
-          </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+          </FrameLayout>
           EOF
 
       - name: 🎨 Create Icons
@@ -508,26 +823,24 @@ jobs:
         if: success()
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.0
-          name: 🚀 MI AI WebView Browser
+          tag_name: v2.0.0
+          name: 🚀 MI AI WebView Browser v2.0.0
           body: |
-            # MI AI - WebView Browser v1.0.0
+            # MI AI - WebView Browser v2.0.0
 
-            ## ✨ Features
-            ✅ All Permissions (Camera, Mic, Storage, Location)
-            ✅ Offline Caching Support
-            ✅ Loading Spinner
-            ✅ Swipe to Refresh
-            ✅ Smart Back Button
-            ✅ Dark Theme
-            ✅ Real Firebase Integration
+            ## ✨ New in v2
+            ✅ Realtime Firebase notifications (system + in-app banner)
+            ✅ Custom pull-to-refresh animation (no system swipe bar)
+            ✅ Calling permissions ready (camera, mic, bluetooth) for AI voice calls
+            ✅ Native JS bridge (window.MiAiNative) for WebRTC permission checks
+            ✅ Auto-notify on every new version release
 
             ## 📱 What it does
             - Runs https://miai-chi.vercel.app/
             - Full file upload/download
-            - Camera & microphone access
-            - Audio/music playback
-            - Responsive design
+            - Camera & microphone access for calling features
+            - Realtime push notifications from Admin Panel
+            - Responsive design, dark theme
 
             ## 📥 Installation
             1. Download MI-AI.apk
@@ -544,7 +857,7 @@ jobs:
         if: success()
         run: |
           echo "✅ SUCCESS!"
-          echo "✓ All permissions included"
-          echo "✓ Loading spinner ready"
-          echo "✓ Real Firebase config applied"
+          echo "✓ Realtime notifications wired (system + in-app banner)"
+          echo "✓ Custom pull-to-refresh animation active"
+          echo "✓ Calling permissions + JS bridge ready"
           echo "✓ APK ready for distribution"
