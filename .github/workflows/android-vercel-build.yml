@@ -79,6 +79,13 @@ jobs:
           include(":app")
           EOF
 
+          cat > android-app/gradle.properties << 'EOF'
+          android.useAndroidX=true
+          android.enableJetifier=true
+          org.gradle.jvmargs=-Xmx4096m
+          org.gradle.parallel=true
+          EOF
+
           cat > android-app/build.gradle.kts << 'EOF'
           plugins {
               id("com.android.application") version "8.1.0" apply false
