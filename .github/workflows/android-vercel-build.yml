@@ -223,7 +223,7 @@ jobs:
               <style name="Theme.MIAI" parent="Theme.MaterialComponents.DayNight">
                   <item name="colorPrimary">@color/primary</item>
                   <item name="colorPrimaryVariant">@color/primary_dark</item>
-                  <item name="colorBackground">@color/background</item>
+                  <item name="android:windowBackground">@color/background</item>
               </style>
               <style name="Theme.MIAI.NoActionBar">
                   <item name="windowActionBar">false</item>
