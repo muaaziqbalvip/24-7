@@ -503,27 +503,31 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y imagemagick
 
-          for size in 192 144 96 72 48; do
-              convert app-icon/icon.png -resize ${size}x${size} \
-                  android-app/app/src/main/res/mipmap-$(
-                      [ $size -eq 192 ] && echo "xxxhdpi" || \
-                      [ $size -eq 144 ] && echo "xxhdpi" || \
-                      [ $size -eq 96 ] && echo "xhdpi" || \
-                      [ $size -eq 72 ] && echo "hdpi" || \
-                      echo "mdpi"
-                  )/ic_launcher.png
-              
-              convert app-icon/icon.png -resize ${size}x${size} \
-                  android-app/app/src/main/res/mipmap-$(
-                      [ $size -eq 192 ] && echo "xxxhdpi" || \
-                      [ $size -eq 144 ] && echo "xxhdpi" || \
-                      [ $size -eq 96 ] && echo "xhdpi" || \
-                      [ $size -eq 72 ] && echo "hdpi" || \
-                      echo "mdpi"
-                  )/ic_launcher_round.png
-          done
+          # Create directories first
+          mkdir -p android-app/app/src/main/res/mipmap-xxxhdpi
+          mkdir -p android-app/app/src/main/res/mipmap-xxhdpi
+          mkdir -p android-app/app/src/main/res/mipmap-xhdpi
+          mkdir -p android-app/app/src/main/res/mipmap-hdpi
+          mkdir -p android-app/app/src/main/res/mipmap-mdpi
 
-          echo "✅ Icons created"
+          # Create icons
+          convert app-icon/icon.png -resize 192x192 android-app/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          convert app-icon/icon.png -resize 192x192 android-app/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+
+          convert app-icon/icon.png -resize 144x144 android-app/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          convert app-icon/icon.png -resize 144x144 android-app/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+
+          convert app-icon/icon.png -resize 96x96 android-app/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          convert app-icon/icon.png -resize 96x96 android-app/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+
+          convert app-icon/icon.png -resize 72x72 android-app/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          convert app-icon/icon.png -resize 72x72 android-app/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+
+          convert app-icon/icon.png -resize 48x48 android-app/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          convert app-icon/icon.png -resize 48x48 android-app/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+
+          echo "✅ Icons created successfully"
+          ls -la android-app/app/src/main/res/mipmap-*/
 
       - name: 🔐 Create Keystore
         run: |
