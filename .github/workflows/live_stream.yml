@@ -1,4 +1,4 @@
-name: MiTV_Facebook_24-7_Simple_Live
+sname: MiTV_Facebook_24-7_Simple_Live
 
 on:
   schedule:
