@@ -10,10 +10,15 @@ beautifulsoup4==4.12.3
 googlesearch-python==1.2.5
 ascii-magic==2.3.0
 google-generativeai==0.8.3
-pillow==10.4.0
+pillow==11.1.0
 python-dotenv==1.0.1
-gTTS==2.5.1
-pydub==0.25.1
-SpeechRecognition==3.10.4
 grpcio==1.64.1
 protobuf==4.25.3
+
+# NOTE (V22): Voice replies now use Groq's PlayAI-TTS via REST API
+# (NeuralEngine.call_groq_tts), so gTTS/pydub/SpeechRecognition are no
+# longer required. If you deploy on a server without common system
+# fonts, install `fonts-dejavu-core` (apt) so the trading-signal image
+# annotation (TradingSignalEngine.draw_signal_on_chart) has a bold font
+# to render the UP/DOWN banner text -- it silently falls back to a
+# built-in font if that's missing, but bold DejaVu looks best.
