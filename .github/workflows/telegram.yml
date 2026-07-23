@@ -33,20 +33,21 @@ jobs:
           pip install -r requirements.txt
 
       # 🔁 Smart Loop Runner (Auto Restart)
-      - name: ♾️ Run MI AI Loop
+      - name: ♾️ Run MI AI TITAN V22
         env:
           GRPC_ENABLE_FORK_SUPPORT: 0
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ADMIN_ID: ${{ secrets.ADMIN_ID }}
         run: |
-          echo "🚀 MI AI STARTED..."
+          echo "🚀 MI AI TITAN V22 STARTED..."
 
           while true
           do
             echo "▶️ Running bot..."
-            python bot1.py
+            python bot_v22.py
 
             echo "⚠️ Bot crashed or stopped. Restarting in 5 seconds..."
             sleep 5
