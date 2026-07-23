@@ -28,7 +28,7 @@
 #  ✅ Groups & Supergroups (mention + reply trigger, shared memory)
 #  ✅ Channel Support (auto-post detection)
 #  ✅ Voice Note Transcription (Whisper-large-v3 via Groq)
-#  🆕 Voice Reply (Groq PlayAI-TTS — bot can speak its answers back)
+#  🆕 Voice Reply (Groq Orpheus TTS — bot can speak its answers back)
 #  ✅ Photo/Document/Media Handler (vision via Gemini + Groq Qwen3.6 vision)
 #  🆕 Trading Chart Vision Analyzer (Groq Qwen3.6-27b multimodal)
 #  🆕 Annotated Signal Image (UP/DOWN arrow drawn onto the chart)
@@ -601,15 +601,20 @@ class NeuralEngine:
         return r.json()["candidates"][0]["content"]["parts"][0]["text"]
 
     @staticmethod
-    def call_groq(prompt, system, history=None):
-        headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+    def call_groq(prompt, system, history=None, fast=False, model=None):
+        """Groq text chat. By default uses gpt-oss-120b (best quality).
+        Pass fast=True for gpt-oss-20b (~2x faster, still very capable) —
+        used for short group replies, quick signal summaries, anything
+        latency-sensitive. Pass an explicit model= to override entirely."""
+        headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
         messages = [{"role": "system", "content": system}]
         if history:
             for h in history:
                 messages.append({"role": h["role"], "content": h["content"]})
         messages.append({"role": "user", "content": prompt})
+        chosen_model = model or ("openai/gpt-oss-20b" if fast else "openai/gpt-oss-120b")
         payload = {
-            "model": "openai/gpt-oss-120b",
+            "model": chosen_model,
             "messages": messages,
             "temperature": 0.75,
             "max_tokens": 4096,
@@ -622,11 +627,20 @@ class NeuralEngine:
         return r.json()["choices"][0]["message"]["content"]
 
     @staticmethod
-    def call_groq_vision(image_bytes, prompt, system, mime_type="image/jpeg"):
+    def call_groq_vision(image_bytes, prompt, system, mime_type="image/jpeg", json_mode=False):
         """Analyze an image using Groq's current multimodal model (Qwen3.6-27b).
         Used as the primary engine for trading-chart analysis, and as a
-        fallback/alternative to Gemini Vision for general photo analysis."""
-        headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+        fallback/alternative to Gemini Vision for general photo analysis.
+
+        json_mode=True forces Groq's native JSON mode (response_format),
+        which is what actually makes the model return clean, parseable
+        JSON reliably — asking for JSON in the prompt alone is not enough
+        and is why trading signals were sometimes coming back as messy
+        freeform text instead of the structured signal."""
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json",
+        }
         b64 = base64.b64encode(image_bytes).decode()
         messages = [
             {"role": "system", "content": system},
@@ -643,27 +657,36 @@ class NeuralEngine:
         payload = {
             "model": "qwen/qwen3.6-27b",
             "messages": messages,
-            "temperature": 0.4,
-            "max_tokens": 2048,
+            "temperature": 0.3,
+            "max_tokens": 1024,
         }
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
         r = session.post(
             "https://api.groq.com/openai/v1/chat/completions",
-            headers=headers, json=payload, timeout=30,
+            headers=headers, json=payload, timeout=25,
         )
         r.raise_for_status()
         return r.json()["choices"][0]["message"]["content"]
 
     @staticmethod
-    def call_groq_tts(text, voice="Fritz-PlayAI"):
-        """Convert text to speech using Groq's PlayAI-TTS model.
-        Returns raw WAV audio bytes, or None on failure."""
+    def call_groq_tts(text, voice="autumn"):
+        """Convert text to speech using Groq's Orpheus TTS model
+        (canopylabs/orpheus-v1-english). Returns raw WAV audio bytes, or
+        raises on failure.
+
+        NOTE: Groq deprecated `playai-tts` on Dec 23, 2025 in favor of
+        Orpheus — if you see 'model_not_found' style errors, that's why.
+        Valid English voices: autumn, diana, hannah, austin, daniel, troy.
+        Orpheus currently only supports response_format='wav' (mp3/flac/
+        ogg/mulaw are reserved for future support but not live yet)."""
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-        # PlayAI-TTS has an input cap; trim long replies to keep this fast & safe.
+        # Trim long replies to keep generation fast.
         clean = re.sub(r'[*_`#>\[\]]', '', text).strip()
         if len(clean) > 950:
             clean = clean[:950].rsplit(" ", 1)[0] + "..."
         payload = {
-            "model": "playai-tts",
+            "model": "canopylabs/orpheus-v1-english",
             "input": clean,
             "voice": voice,
             "response_format": "wav",
@@ -677,16 +700,25 @@ class NeuralEngine:
 
     @staticmethod
     def call_groq_whisper(audio_bytes, filename="audio.ogg"):
-        """Transcribe audio using Groq Whisper."""
+        """Transcribe audio using Groq Whisper. Tries the fast Turbo model
+        first (400 t/s, cheaper), falls back to the full large-v3 model
+        (slightly higher accuracy, esp. for noisy/accented audio) if
+        Turbo fails for any reason."""
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-        files = {"file": (filename, audio_bytes, "audio/ogg")}
-        data = {"model": "whisper-large-v3"}
-        r = session.post(
-            "https://api.groq.com/openai/v1/audio/transcriptions",
-            headers=headers, files=files, data=data, timeout=30,
-        )
-        r.raise_for_status()
-        return r.json().get("text", "")
+        for model_id in ("whisper-large-v3-turbo", "whisper-large-v3"):
+            try:
+                files = {"file": (filename, audio_bytes, "audio/ogg")}
+                data = {"model": model_id}
+                r = session.post(
+                    "https://api.groq.com/openai/v1/audio/transcriptions",
+                    headers=headers, files=files, data=data, timeout=30,
+                )
+                r.raise_for_status()
+                return r.json().get("text", "")
+            except Exception as e:
+                logger.warning(f"Whisper model {model_id} failed: {e}")
+                continue
+        raise RuntimeError("Both Whisper models failed")
 
     @staticmethod
     def call_openrouter(prompt, system, history=None):
@@ -714,7 +746,7 @@ class NeuralEngine:
 
     @classmethod
     def get_response(cls, uid, prompt, engine_override=None, custom_role=None,
-                      use_history=True, chat_id=None, author=""):
+                      use_history=True, chat_id=None, author="", fast=False):
         """
         Main router. Returns (response_text, engine_label).
         Injects conversation history automatically.
@@ -723,6 +755,11 @@ class NeuralEngine:
         by the caller — see handle_text), the shared group_memory table is
         used instead of the per-user table, so everyone in the group shares
         the same conversation context.
+
+        fast=True routes Groq calls to gpt-oss-20b (~2x faster than the
+        default gpt-oss-120b) for latency-sensitive replies — short group
+        chatter, quick acknowledgements — where near-instant response
+        matters more than the small quality difference.
         """
         u = db.get_user(uid)
         mode   = u.get("mode", "chat")
@@ -746,18 +783,18 @@ class NeuralEngine:
 
         labels = {
             "gemini"     : "Gemini-1.5-Flash 💎",
-            "groq"       : "Groq GPT-OSS-120B ⚡",
+            "groq"       : "Groq GPT-OSS-20B ⚡⚡" if fast else "Groq GPT-OSS-120B ⚡",
             "openrouter" : "OpenRouter Llama 🌐",
         }
         funcs = {
             "gemini"     : lambda p, s, h: cls.call_gemini(p, s, h),
-            "groq"       : lambda p, s, h: cls.call_groq(p, s, h),
+            "groq"       : lambda p, s, h: cls.call_groq(p, s, h, fast=fast),
             "openrouter" : lambda p, s, h: cls.call_openrouter(p, s, h),
         }
 
         for eng in order:
             try:
-                logger.info(f"Engine [{eng}] | uid={uid} | chat={chat_id}")
+                logger.info(f"Engine [{eng}] | uid={uid} | chat={chat_id} | fast={fast}")
                 response = funcs[eng](prompt, system, history)
                 db.increment_queries(uid)
                 if is_group:
@@ -911,14 +948,23 @@ class TradingSignalEngine:
     SYSTEM_PROMPT = (
         "Tum ek expert trading chart analyst ho jo candlestick charts "
         "(Quotex, IQ Option, Binomo, TradingView, MT4/MT5 jese platforms) "
-        "ki screenshots analyze karte ho. Tumhe candle patterns, trend "
-        "direction, support/resistance, momentum, aur kam se kam in "
-        "strategies ke against chart ko test karna hai: "
-        "(1) Trend-following (higher highs/lows vs lower highs/lows), "
-        "(2) Candlestick reversal patterns (engulfing, pin bar, doji), "
-        "(3) Support/Resistance bounce ya breakout, "
-        "(4) Momentum/volatility (candle body size, wick ratio). "
-        "\n\n"
+        "ki screenshots analyze karte ho. Chart mein jo bhi visible ho usay "
+        "use karo — candle patterns, trend lines, moving averages "
+        "(EMA/SMA), RSI, MACD, Bollinger Bands, volume bars, support/"
+        "resistance zones. Agar koi indicator chart pe nahi dikh raha, "
+        "sirf candle price-action se hi analysis karo — indicator na hone "
+        "ki wajah se signal 'unclear' mat kaho.\n\n"
+        "In strategies ko test karo:\n"
+        "(1) Trend-following — higher highs/lows (uptrend) vs lower "
+        "highs/lows (downtrend).\n"
+        "(2) Candlestick reversal patterns — engulfing, pin bar/hammer, "
+        "doji, shooting star.\n"
+        "(3) Support/Resistance — price kisi zone se bounce kar raha hai "
+        "ya breakout ho raha hai.\n"
+        "(4) Momentum/volatility — candle body size, wick ratio, volume "
+        "spike agar visible ho.\n"
+        "(5) Agar RSI/MACD/Bollinger visible hain — unka overbought/"
+        "oversold ya crossover signal bhi shamil karo.\n\n"
         "Tumhara jawab HAMESHA sirf ek valid JSON object hona chahiye, "
         "koi extra text, markdown, ya code fence nahi. Exact keys:\n"
         "{\n"
@@ -927,35 +973,62 @@ class TradingSignalEngine:
         '  "trend": "<1 line trend description in Roman Urdu>",\n'
         '  "strategies_agreeing": ["<strategy name>", ...],\n'
         '  "reasoning": "<2-3 sentence explanation in Roman Urdu, mention '
-        'candle pattern + trend + momentum>",\n'
+        'candle pattern + trend + momentum + indicator agar visible ho>",\n'
         '  "risk_note": "<1 short line reminding this is high-risk, no '
         'guarantee>"\n'
         "}\n"
-        "Agar chart clear nahi hai ya signal detect nahi ho pata, "
-        '"direction" ko "WAIT" set karo aur confidence low rakho. '
-        "Kabhi bhi 100% confidence mat do — market kabhi guaranteed nahi hota."
+        "Agar chart bilkul samajh nahi aata (blank/corrupt image), tabhi "
+        '"direction" ko "WAIT" karo. Warna candle price-action ke aadhar '
+        "par hamesha ek clear UP ya DOWN opinion do, kam confidence ke "
+        "sath sahi lekin faisla zaroor do. Kabhi bhi 100% confidence mat "
+        "do — market kabhi guaranteed nahi hota."
     )
 
     @classmethod
     def analyze_chart(cls, image_bytes, mime_type="image/jpeg", user_note=""):
         """
-        Runs the chart through Groq vision, parses JSON safely, and falls
-        back to Gemini Vision if Groq fails. Returns a dict, always with
-        the same keys (safe defaults on total failure).
+        Runs the chart through Groq vision (JSON mode forced for reliable
+        structured output), parses JSON safely, and falls back to Gemini
+        Vision if Groq fails. Returns a dict, always with the same keys
+        (safe defaults on total failure).
         """
         prompt = (
-            "Ye trading chart ki screenshot hai. Isay analyze karo aur "
+            "Ye trading chart ki screenshot hai. Isay abhi analyze karo aur "
             "sirf JSON format mein signal do jaisa system prompt mein "
-            "bataya gaya hai."
+            "bataya gaya hai. Sirf JSON object return karo, kuch aur nahi."
         )
         if user_note:
             prompt += f"\n\nUser ka extra note: {user_note}"
 
         raw = None
         engine_used = ""
+        groq_error_detail = ""
         try:
-            raw = NeuralEngine.call_groq_vision(image_bytes, prompt, cls.SYSTEM_PROMPT, mime_type)
+            raw = NeuralEngine.call_groq_vision(
+                image_bytes, prompt, cls.SYSTEM_PROMPT, mime_type, json_mode=True
+            )
             engine_used = "Groq Qwen3.6-27b Vision ⚡"
+        except requests.exceptions.HTTPError as e:
+            body = ""
+            try:
+                body = e.response.text[:300]
+            except Exception:
+                pass
+            if "terms_required" in body or "model_terms_required" in body:
+                groq_error_detail = (
+                    "Groq vision model (qwen3.6-27b) ke terms accept nahi hue. "
+                    "Fix: https://console.groq.com/playground?model=qwen/qwen3.6-27b "
+                    "pe ja kar Accept Terms dabao."
+                )
+            logger.warning(f"Groq chart vision failed: {e} | {body}")
+            try:
+                raw = NeuralEngine.call_gemini_vision(
+                    image_bytes, mime_type,
+                    prompt + "\n\n" + cls.SYSTEM_PROMPT, cls.SYSTEM_PROMPT
+                )
+                engine_used = "Gemini Vision 💎 (Groq fallback)"
+            except Exception as e2:
+                logger.error(f"Gemini chart vision also failed: {e2}")
         except Exception as e:
             logger.warning(f"Groq chart vision failed: {e}")
             try:
@@ -963,12 +1036,14 @@ class TradingSignalEngine:
                     image_bytes, mime_type,
                     prompt + "\n\n" + cls.SYSTEM_PROMPT, cls.SYSTEM_PROMPT
                 )
-                engine_used = "Gemini Vision 💎"
+                engine_used = "Gemini Vision 💎 (Groq fallback)"
             except Exception as e2:
                 logger.error(f"Gemini chart vision also failed: {e2}")
 
         parsed = cls._safe_parse(raw)
         parsed["engine_used"] = engine_used or "N/A"
+        if not raw and groq_error_detail:
+            parsed["reasoning"] = groq_error_detail
         return parsed
 
     @staticmethod
@@ -1018,6 +1093,7 @@ class TradingSignalEngine:
         or drawing fails (caller should fall back to text-only signal).
         """
         if not HAS_PIL:
+            logger.warning("draw_signal_on_chart: PIL not available, HAS_PIL=False")
             return None
         try:
             base = Image.open(BytesIO(image_bytes)).convert("RGBA")
@@ -1054,50 +1130,71 @@ class TradingSignalEngine:
                         (ax + asize, ay + asize * 0.55),
                     ]
                 else:
-                    top = ay
                     pts = [
                         (cx, ay + asize), (ax, ay + asize * 0.45),
                         (cx - asize * 0.18, ay + asize * 0.45), (cx - asize * 0.18, ay),
                         (cx + asize * 0.18, ay), (cx + asize * 0.18, ay + asize * 0.45),
                         (ax + asize, ay + asize * 0.45),
                     ]
-                # soft glow: draw a larger, translucent copy behind the arrow
+                # Pillow polygon needs int/float coords, this is fine as-is,
+                # but round them for consistent rendering across versions.
+                pts = [(round(px), round(py)) for px, py in pts]
                 glow_color = (color[0], color[1], color[2], 90)
                 draw.polygon(pts, fill=glow_color)
                 draw.polygon(pts, fill=color, outline=(255, 255, 255, 230))
             else:
-                # WAIT: draw a horizontal "pause" bar icon
                 bx, by = ax, ay + asize * 0.3
                 bar_w, bar_h = asize * 0.28, asize * 0.4
-                draw.rectangle([bx, by, bx + bar_w, by + bar_h], fill=color)
-                draw.rectangle([bx + asize * 0.45, by, bx + asize * 0.45 + bar_w, by + bar_h], fill=color)
+                draw.rectangle(
+                    [round(bx), round(by), round(bx + bar_w), round(by + bar_h)],
+                    fill=color
+                )
+                draw.rectangle(
+                    [round(bx + asize * 0.45), round(by),
+                     round(bx + asize * 0.45 + bar_w), round(by + bar_h)],
+                    fill=color
+                )
 
             # ── Top banner: direction + confidence badge ─────────────────────
             banner_h = max(56, int(h * 0.09))
             draw.rectangle([0, 0, w, banner_h], fill=(10, 10, 20, 200))
 
-            try:
-                font_big = ImageFont.truetype(
-                    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-                    size=max(24, int(banner_h * 0.42))
-                )
-                font_small = ImageFont.truetype(
-                    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-                    size=max(16, int(banner_h * 0.26))
-                )
-            except Exception:
+            # NOTE: text() coordinates must be ints in some Pillow builds,
+            # and ImageFont.load_default() (the emoji-free fallback used
+            # when the TTF path below doesn't exist on the server) cannot
+            # render emoji glyphs and will raise on them — that silent
+            # crash was the #1 reason the annotated image wasn't showing
+            # up at all. Labels below are plain ASCII/Urdu-safe text now;
+            # emoji only appears in the Telegram *caption*, never burned
+            # into the image itself.
+            font_big = font_small = None
+            for font_path in (
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+            ):
+                try:
+                    font_big = ImageFont.truetype(font_path, size=max(24, int(banner_h * 0.42)))
+                    font_small = ImageFont.truetype(font_path, size=max(16, int(banner_h * 0.26)))
+                    break
+                except Exception:
+                    continue
+            if font_big is None:
                 font_big = ImageFont.load_default()
                 font_small = ImageFont.load_default()
 
-            label = {"UP": "📈 UP SIGNAL", "DOWN": "📉 DOWN SIGNAL", "WAIT": "⏸ WAIT"}[direction]
-            draw.text((20, banner_h * 0.15), label, font=font_big, fill=color)
+            label = {"UP": "UP SIGNAL", "DOWN": "DOWN SIGNAL", "WAIT": "WAIT"}[direction]
+            draw.text((20, round(banner_h * 0.15)), label, font=font_big, fill=color)
             conf_text = f"Confidence: {confidence}%"
-            draw.text((20, banner_h * 0.6), conf_text, font=font_small, fill=(255, 255, 255, 230))
+            draw.text((20, round(banner_h * 0.6)), conf_text, font=font_small, fill=(255, 255, 255, 230))
 
             wm = "MI AI TITAN V22"
-            bbox = draw.textbbox((0, 0), wm, font=font_small)
-            wm_w = bbox[2] - bbox[0]
-            draw.text((w - wm_w - 20, banner_h * 0.35), wm, font=font_small, fill=(180, 180, 200, 220))
+            try:
+                bbox = draw.textbbox((0, 0), wm, font=font_small)
+                wm_w = bbox[2] - bbox[0]
+            except Exception:
+                wm_w = len(wm) * 8  # rough fallback if textbbox unsupported
+            draw.text((w - wm_w - 20, round(banner_h * 0.35)), wm, font=font_small, fill=(180, 180, 200, 220))
 
             combined = Image.alpha_composite(base, overlay).convert("RGB")
             out = BytesIO()
@@ -1105,7 +1202,7 @@ class TradingSignalEngine:
             out.seek(0)
             return out.read()
         except Exception as e:
-            logger.error(f"draw_signal_on_chart failed: {e}")
+            logger.error(f"draw_signal_on_chart failed: {e}", exc_info=True)
             return None
 
     @staticmethod
@@ -1781,6 +1878,8 @@ def cmd_help(m):
         f"• `/code [language] [task]` — Code generate\n"
         f"• `/signal` — Trading signal mode (next photo = chart)\n"
         f"• `/voice` — Voice reply ON/OFF toggle\n"
+        f"• `/testgroq` — Groq models (chat/vision/TTS) diagnostic\n"
+        f"• `/models` — Kaunsa Groq model kahan use ho raha hai\n"
         f"• `/clear` — Memory clear\n"
         f"• `/history` — Chat history\n"
         f"• `/export` — History download\n"
@@ -2202,9 +2301,104 @@ def cmd_deep(m):
                      parse_mode="Markdown", reply_markup=main_kb(uid))
 
 
+@bot.message_handler(commands=["models"])
+def cmd_models(m):
+    """Shows exactly which Groq model is used for each task — useful for
+    debugging and for understanding the multi-model routing setup."""
+    text = (
+        "🧩 *GROQ MULTI-MODEL ROUTING*\n"
+        "━━━━━━━━━━━━━━━━━━━━\n\n"
+        "💬 *Normal chat (deep):* `openai/gpt-oss-120b`\n"
+        "   _(best quality, ~500 t/s)_\n\n"
+        "⚡ *Fast replies (groups, quick text):* `openai/gpt-oss-20b`\n"
+        "   _(~1000 t/s, 2x faster)_\n\n"
+        "👁️ *Vision (photos + trading charts):* `qwen/qwen3.6-27b`\n"
+        "   _(preview model — needs terms accepted once)_\n\n"
+        "🎙️ *Voice-in (transcription):* `whisper-large-v3-turbo`\n"
+        "   _(fallback: `whisper-large-v3` if turbo fails)_\n\n"
+        "🔊 *Voice-out (TTS):* `canopylabs/orpheus-v1-english`\n"
+        "   _(voices: autumn, diana, hannah, austin, daniel, troy — "
+        "preview model, needs terms accepted once)_\n\n"
+        "🌐 *Fallback (if Groq is down):* Gemini 1.5 Flash → OpenRouter\n\n"
+        "Run `/testgroq` to verify each model is actually reachable with "
+        "your current `GROQ_API_KEY`."
+    )
+    bot.send_message(m.chat.id, text, parse_mode="Markdown")
+
+
+@bot.message_handler(commands=["testgroq"])
+def cmd_testgroq(m):
+    """Diagnostic: directly probes Groq's TTS and Vision models with a
+    tiny request each and reports back exactly what's wrong (bad key,
+    terms not accepted, model renamed, etc.) instead of the bot just
+    'not doing anything'."""
+    bot.send_message(m.chat.id, "🔎 Groq models test kar raha hoon...")
+    lines = ["🔎 *GROQ DIAGNOSTIC*\n"]
+
+    # 1) Chat model
+    try:
+        NeuralEngine.call_groq("Say OK", "You are a test.", [])
+        lines.append("✅ Chat model (gpt-oss-120b): working")
+    except requests.exceptions.HTTPError as e:
+        body = e.response.text[:150] if e.response is not None else str(e)
+        lines.append(f"❌ Chat model failed: `{body}`")
+    except Exception as e:
+        lines.append(f"❌ Chat model failed: `{e}`")
+
+    # 2) Vision model — tiny 1x1 test image
+    try:
+        tiny_png = base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+        NeuralEngine.call_groq_vision(tiny_png, "What color is this?", "Answer in 1 word.")
+        lines.append("✅ Vision model (qwen3.6-27b): working")
+    except requests.exceptions.HTTPError as e:
+        body = e.response.text[:200] if e.response is not None else str(e)
+        if "terms_required" in body:
+            lines.append(
+                "❌ Vision model: *terms not accepted*. Fix: "
+                "https://console.groq.com/playground?model=qwen/qwen3.6-27b → Accept Terms"
+            )
+        else:
+            lines.append(f"❌ Vision model failed: `{body}`")
+    except Exception as e:
+        lines.append(f"❌ Vision model failed: `{e}`")
+
+    # 3) TTS model
+    try:
+        audio = NeuralEngine.call_groq_tts("Test.")
+        if audio and len(audio) > 100:
+            lines.append(f"✅ TTS model (orpheus-v1-english): working ({len(audio)} bytes)")
+        else:
+            lines.append("❌ TTS model: returned empty audio")
+    except requests.exceptions.HTTPError as e:
+        body = e.response.text[:200] if e.response is not None else str(e)
+        if "terms_required" in body:
+            lines.append(
+                "❌ TTS model: *terms not accepted*. Fix: "
+                "https://console.groq.com/playground?model=canopylabs/orpheus-v1-english → Accept Terms"
+            )
+        else:
+            lines.append(f"❌ TTS model failed: `{body}`")
+    except Exception as e:
+        lines.append(f"❌ TTS model failed: `{e}`")
+
+    bot.send_message(m.chat.id, "\n".join(lines), parse_mode="Markdown")
+
+
+@bot.message_handler(commands=["testvoice"])
+def cmd_testvoice(m):
+    """Diagnostic: directly tests Groq TTS regardless of the user's
+    voice_reply setting, so TTS issues (bad API key, region block,
+    model access) can be isolated from the rest of the bot."""
+    uid = m.from_user.id
+    bot.send_message(m.chat.id, "🎙️ Testing Groq Orpheus TTS...")
+    _maybe_send_voice(m.chat.id, uid, "Yeh ek voice test hai. Agar aap yeh sun rahe hain, TTS working hai.", force=True)
+
+
 @bot.message_handler(commands=["voice"])
 def cmd_voice(m):
-    """Toggle voice replies — bot speaks its text answers back via Groq PlayAI-TTS."""
+    """Toggle voice replies — bot speaks its text answers back via Groq Orpheus TTS."""
     uid = m.from_user.id
     u   = db.get_user(uid)
     new = 0 if u.get("voice_reply") else 1
@@ -2749,6 +2943,12 @@ def _handle_chart_signal_photo(m, uid, caption):
                 _send_chunks(m.chat.id, text_report)
         else:
             _send_chunks(m.chat.id, text_report)
+            bot.send_message(
+                m.chat.id,
+                "⚠️ _Annotated chart image is baar nahi ban saki (server par image "
+                "library issue) — text signal upar mojood hai._",
+                parse_mode="Markdown"
+            )
 
         _maybe_send_voice(m.chat.id, uid, signal.get("reasoning", ""))
         db.increment_queries(uid)
@@ -2853,7 +3053,7 @@ def handle_text(m):
                 # then give a short witty reply for flavor.
                 db.add_group_memory(chat_id, "user", text, author=speaker)
                 sys = "1-2 line ka friendly Roman Urdu/English reply do. Koi lamba jawab nahi."
-                ans, _ = NeuralEngine.get_response(uid, text, custom_role=sys, use_history=False)
+                ans, _ = NeuralEngine.get_response(uid, text, custom_role=sys, use_history=False, fast=True)
                 try:
                     bot.reply_to(m, ans)
                 except Exception:
@@ -2943,22 +3143,54 @@ def handle_text(m):
 # 🔧  SECTION 18 : UTILITIES
 # ══════════════════════════════════════════════════════════════════════════════════
 
-def _maybe_send_voice(chat_id, uid, text):
-    """If the user has voice replies turned on, synthesize the answer with
-    Groq PlayAI-TTS and send it as a Telegram voice note. Fails silently
-    (text reply has already been sent, so voice is a bonus, not required)."""
+def _maybe_send_voice(chat_id, uid, text, force=False):
+    """If the user has voice replies turned on (or force=True), synthesize
+    the answer with Groq Orpheus TTS and send it as a Telegram voice note.
+    On failure this now tells the user directly instead of failing silently,
+    so a broken GROQ_API_KEY / TTS access issue is visible immediately
+    instead of looking like the feature 'does nothing'."""
     try:
-        u = db.get_user(uid)
-        if not u.get("voice_reply", 0):
-            return
+        if not force:
+            u = db.get_user(uid)
+            if not u.get("voice_reply", 0):
+                return
         if not text or not text.strip():
             return
         audio = NeuralEngine.call_groq_tts(text)
-        if not audio:
+        if not audio or len(audio) < 100:
+            bot.send_message(chat_id, "⚠️ Voice reply generate nahi ho saka (empty audio). Text jawab upar mojood hai.")
             return
-        bot.send_voice(chat_id, BytesIO(audio))
+        voice_file = BytesIO(audio)
+        voice_file.name = "reply.wav"
+        bot.send_voice(chat_id, voice_file)
+    except requests.exceptions.HTTPError as e:
+        detail = ""
+        try:
+            detail = e.response.text[:300]
+        except Exception:
+            pass
+        logger.warning(f"Voice reply HTTP error: {e} | {detail}")
+        if "terms_required" in detail or "model_terms_required" in detail:
+            bot.send_message(
+                chat_id,
+                "⚠️ *Voice Reply band hai kyunki Groq console pe Orpheus TTS model "
+                "ke terms accept nahi hue.*\n\n"
+                "Fix: browser mein ye link kholo (apne Groq account se login karke):\n"
+                "`https://console.groq.com/playground?model=canopylabs/orpheus-v1-english`\n"
+                "Wahan 'Accept Terms' button dabao, phir dobara try karo — "
+                "iske baad voice turant kaam karegi.",
+                parse_mode="Markdown"
+            )
+        else:
+            bot.send_message(
+                chat_id,
+                f"⚠️ Voice reply nahi bana ({e.response.status_code if e.response is not None else '?'}). "
+                f"GROQ_API_KEY check karein.\n`{detail}`",
+                parse_mode="Markdown"
+            )
     except Exception as e:
         logger.warning(f"Voice reply failed: {e}")
+        bot.send_message(chat_id, f"⚠️ Voice reply nahi ban saka: {e}")
 
 
 def _send_chunks(chat_id, text, reply_to=None, chunk=4000):
@@ -3000,7 +3232,7 @@ def boot_sequence():
 ║  ✅  ZIP Web Project        (AI-generated full projects)      ║
 ║  ✅  Word Documents         (python-docx)                     ║
 ║  ✅  Voice Transcription    (Groq Whisper-large-v3)           ║
-║  🆕  Voice Reply            (Groq PlayAI-TTS)                 ║
+║  🆕  Voice Reply            (Groq Orpheus TTS)                 ║
 ║  ✅  Image Vision           (Groq Qwen3.6 + Gemini fallback)  ║
 ║  🆕  Trading Signal Engine  (chart → UP/DOWN + annotated img) ║
 ║  ✅  Register/Login System                                    ║
