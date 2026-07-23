@@ -134,6 +134,11 @@ CREATOR_NAME     = "Muaaz Iqbal"
 ORG_NAME         = "MUSLIM ISLAM | MiTV Network"
 BOT_START_TIME   = datetime.now()
 
+# Cached bot identity — avoids calling bot.get_me() on every single group
+# message (which was slowing down group replies with an extra Telegram
+# API round-trip each time). Filled once in boot_sequence().
+_BOT_ME = {"id": None, "username": ""}
+
 # ─── TRADING SIGNAL FRAMES ─────────────────────────────────────────────────────
 SIGNAL_FRAMES = [
     "📊 Chart receive ho gaya...",
@@ -546,11 +551,19 @@ class NeuralEngine:
         if custom:
             return custom
         mode_hint = cls.MODE_PROMPTS.get(mode, cls.MODE_PROMPTS["chat"])
-        deep_hint = (
-            "\n[DEEP THINK MODE ON]: Take extra time to reason step-by-step before answering. "
-            "Show your chain of thought. Be extremely thorough."
-        ) if deep else ""
-        return cls.BASE_SYSTEM + f"\nCURRENT MODE: {mode_hint}{deep_hint}"
+        if deep:
+            length_hint = (
+                "\n[DEEP THINK MODE ON]: Take extra time to reason step-by-step before answering. "
+                "Show your chain of thought. Be extremely thorough — length is not a concern here."
+            )
+        else:
+            length_hint = (
+                "\n[FAST MODE]: Keep the answer short and to the point — a few sentences "
+                "or a short list, not a long essay. Only go longer if the question genuinely "
+                "requires it (e.g. step-by-step instructions, code). Avoid padding or repeating "
+                "the question back."
+            )
+        return cls.BASE_SYSTEM + f"\nCURRENT MODE: {mode_hint}{length_hint}"
 
     @staticmethod
     def _history_to_gemini(history):
@@ -605,7 +618,13 @@ class NeuralEngine:
         """Groq text chat. By default uses gpt-oss-120b (best quality).
         Pass fast=True for gpt-oss-20b (~2x faster, still very capable) —
         used for short group replies, quick signal summaries, anything
-        latency-sensitive. Pass an explicit model= to override entirely."""
+        latency-sensitive. Pass an explicit model= to override entirely.
+
+        max_tokens is also capped lower in fast mode: shorter generations
+        finish faster regardless of tokens/sec, and pairs with the
+        [FAST MODE] system-prompt instruction to keep replies concise
+        instead of long by default — Deep Think is what unlocks the full
+        4096-token budget for long, thorough answers."""
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
         messages = [{"role": "system", "content": system}]
         if history:
@@ -617,7 +636,7 @@ class NeuralEngine:
             "model": chosen_model,
             "messages": messages,
             "temperature": 0.75,
-            "max_tokens": 4096,
+            "max_tokens": 700 if fast else 4096,
         }
         r = session.post(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -679,12 +698,15 @@ class NeuralEngine:
         Orpheus — if you see 'model_not_found' style errors, that's why.
         Valid English voices: autumn, diana, hannah, austin, daniel, troy.
         Orpheus currently only supports response_format='wav' (mp3/flac/
-        ogg/mulaw are reserved for future support but not live yet)."""
+        ogg/mulaw are reserved for future support but not live yet).
+
+        Kept deliberately short (300 char cap) and a tight 20s timeout —
+        Orpheus generation time scales with input length, and a voice
+        reply should feel instant, not lag behind the text answer."""
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-        # Trim long replies to keep generation fast.
         clean = re.sub(r'[*_`#>\[\]]', '', text).strip()
-        if len(clean) > 950:
-            clean = clean[:950].rsplit(" ", 1)[0] + "..."
+        if len(clean) > 300:
+            clean = clean[:300].rsplit(" ", 1)[0] + "..."
         payload = {
             "model": "canopylabs/orpheus-v1-english",
             "input": clean,
@@ -693,7 +715,7 @@ class NeuralEngine:
         }
         r = session.post(
             "https://api.groq.com/openai/v1/audio/speech",
-            headers=headers, json=payload, timeout=30,
+            headers=headers, json=payload, timeout=20,
         )
         r.raise_for_status()
         return r.content
@@ -767,6 +789,14 @@ class NeuralEngine:
         engine = engine_override or u.get("engine", "auto")
         system = cls.build_system(mode, deep, custom_role)
 
+        # Auto speed selection: unless the caller already forced fast=True
+        # for a specific reason (group chatter, quick acks), use the fast
+        # 20B model whenever Deep Think is OFF, and the full 120B model
+        # only when the user explicitly wants deeper/longer answers via
+        # Deep Think. This keeps normal chat snappy and reserves the
+        # slower, higher-quality model for when it's actually asked for.
+        effective_fast = fast or (not deep)
+
         is_group = chat_id is not None
         if use_history:
             history = db.get_group_history(chat_id, limit=12) if is_group else db.get_history(uid, limit=8)
@@ -783,12 +813,12 @@ class NeuralEngine:
 
         labels = {
             "gemini"     : "Gemini-1.5-Flash 💎",
-            "groq"       : "Groq GPT-OSS-20B ⚡⚡" if fast else "Groq GPT-OSS-120B ⚡",
+            "groq"       : "Groq GPT-OSS-20B ⚡⚡" if effective_fast else "Groq GPT-OSS-120B ⚡",
             "openrouter" : "OpenRouter Llama 🌐",
         }
         funcs = {
             "gemini"     : lambda p, s, h: cls.call_gemini(p, s, h),
-            "groq"       : lambda p, s, h: cls.call_groq(p, s, h, fast=fast),
+            "groq"       : lambda p, s, h: cls.call_groq(p, s, h, fast=effective_fast),
             "openrouter" : lambda p, s, h: cls.call_openrouter(p, s, h),
         }
 
@@ -2892,18 +2922,31 @@ def handle_photo(m):
             logger.warning(f"Groq vision failed, falling back to Gemini: {e}")
             ans = NeuralEngine.call_gemini_vision(data, "image/jpeg", caption, system)
             engine_label = "Gemini Vision 💎"
-        try:
-            bot.edit_message_text(
-                f"👁️ *IMAGE ANALYSIS*\n\n{ans}\n\n⚡ _{engine_label}_",
-                m.chat.id, mid, parse_mode="Markdown"
-            )
-        except Exception:
+        full_text = f"👁️ *IMAGE ANALYSIS*\n\n{ans}\n\n⚡ _{engine_label}_"
+
+        if _voice_is_on(uid):
             try:
                 bot.delete_message(m.chat.id, mid)
             except Exception:
                 pass
-            _send_chunks(m.chat.id, f"👁️ *IMAGE ANALYSIS*\n\n{ans}\n\n⚡ _{engine_label}_")
-        _maybe_send_voice(m.chat.id, uid, ans)
+            voice_sent = _maybe_send_voice(m.chat.id, uid, ans)
+            if voice_sent:
+                preview = ans.strip()
+                if len(preview) > 200:
+                    preview = preview[:200].rsplit(" ", 1)[0] + "..."
+                bot.send_message(m.chat.id, f"🎙️ _{preview}_\n\n⚡ _{engine_label}_", parse_mode="Markdown")
+            else:
+                _send_chunks(m.chat.id, full_text)
+        else:
+            try:
+                bot.edit_message_text(full_text, m.chat.id, mid, parse_mode="Markdown")
+            except Exception:
+                try:
+                    bot.delete_message(m.chat.id, mid)
+                except Exception:
+                    pass
+                _send_chunks(m.chat.id, full_text)
+
         db.increment_queries(uid)
         db.log_event(uid, "vision_query")
     except Exception as e:
@@ -2950,7 +2993,12 @@ def _handle_chart_signal_photo(m, uid, caption):
                 parse_mode="Markdown"
             )
 
-        _maybe_send_voice(m.chat.id, uid, signal.get("reasoning", ""))
+        if _voice_is_on(uid):
+            direction_word = {"UP": "Up signal", "DOWN": "Down signal", "WAIT": "Wait signal"}.get(
+                signal.get("direction", "WAIT"), "Signal"
+            )
+            short_voice_text = f"{direction_word}, confidence {signal.get('confidence', 0)} percent."
+            _maybe_send_voice(m.chat.id, uid, short_voice_text)
         db.increment_queries(uid)
         db.log_event(uid, "trading_signal", signal.get("direction", "WAIT"))
     except Exception as e:
@@ -3020,11 +3068,14 @@ def handle_text(m):
     if chat_type in ["group", "supergroup"]:
         speaker = m.from_user.first_name if m.from_user else "Someone"
         try:
-            binfo        = bot.get_me()
-            bot_username = (binfo.username or "").lower()
+            if _BOT_ME["id"] is None:
+                binfo = bot.get_me()
+                _BOT_ME["id"] = binfo.id
+                _BOT_ME["username"] = (binfo.username or "").lower()
+            bot_username = _BOT_ME["username"]
             is_reply     = (
                 m.reply_to_message and m.reply_to_message.from_user
-                and m.reply_to_message.from_user.id == binfo.id
+                and m.reply_to_message.from_user.id == _BOT_ME["id"]
             )
             is_mention   = (
                 bot_username in text.lower() or
@@ -3043,19 +3094,35 @@ def handle_text(m):
                     ),
                     chat_id=chat_id, author=speaker,
                 )
-                _send_chunks(chat_id,
-                    f"🤖 {ans}\n\n━━━━━━━━━━━━\n⚡ _{node}_",
-                    reply_to=m.message_id)
-                _maybe_send_voice(chat_id, uid, ans)
+                if _voice_is_on(uid):
+                    voice_sent = _maybe_send_voice(chat_id, uid, ans)
+                    if voice_sent:
+                        preview = ans.strip()
+                        if len(preview) > 200:
+                            preview = preview[:200].rsplit(" ", 1)[0] + "..."
+                        bot.send_message(chat_id, f"🎙️ _{preview}_\n\n⚡ _{node}_",
+                                          parse_mode="Markdown", reply_to_message_id=m.message_id)
+                    else:
+                        _send_chunks(chat_id, f"🤖 {ans}\n\n━━━━━━━━━━━━\n⚡ _{node}_", reply_to=m.message_id)
+                else:
+                    _send_chunks(chat_id,
+                        f"🤖 {ans}\n\n━━━━━━━━━━━━\n⚡ _{node}_",
+                        reply_to=m.message_id)
             else:
-                # Still record the message into shared group memory (silently)
-                # so context isn't lost even when the bot isn't addressed —
-                # then give a short witty reply for flavor.
+                # Record the user's message into shared group memory even
+                # when the bot isn't directly addressed, so context isn't
+                # lost — then give a short witty reply for flavor, and
+                # record THAT too (previously only the user's line was
+                # saved, so the bot's own replies vanished from context
+                # and later `/`-mention questions couldn't see them).
                 db.add_group_memory(chat_id, "user", text, author=speaker)
                 sys = "1-2 line ka friendly Roman Urdu/English reply do. Koi lamba jawab nahi."
-                ans, _ = NeuralEngine.get_response(uid, text, custom_role=sys, use_history=False, fast=True)
+                ans, _ = NeuralEngine.get_response(
+                    uid, text, custom_role=sys, use_history=False, fast=True
+                )
                 try:
                     bot.reply_to(m, ans)
+                    db.add_group_memory(chat_id, "assistant", ans, engine="groq-fast")
                 except Exception:
                     pass
         except Exception as e:
@@ -3128,8 +3195,23 @@ def handle_text(m):
                 bot.delete_message(chat_id, mid)
             except Exception:
                 pass
-            _send_chunks(chat_id, final)
-            _maybe_send_voice(chat_id, uid, ans)
+
+            if _voice_is_on(uid):
+                voice_sent = _maybe_send_voice(chat_id, uid, ans)
+                if voice_sent:
+                    # Voice already carries the answer — just send a short
+                    # text preview instead of the full response, so people
+                    # don't get the same thing twice.
+                    preview = ans.strip()
+                    if len(preview) > 200:
+                        preview = preview[:200].rsplit(" ", 1)[0] + "..."
+                    bot.send_message(chat_id, f"🎙️ _{preview}_\n\n⚡ _{node}_", parse_mode="Markdown")
+                else:
+                    # Voice failed — fall back to the full text so the
+                    # user isn't left with nothing.
+                    _send_chunks(chat_id, final)
+            else:
+                _send_chunks(chat_id, final)
 
         except Exception as e:
             logger.error(f"Private handler error: {e}")
@@ -3143,26 +3225,51 @@ def handle_text(m):
 # 🔧  SECTION 18 : UTILITIES
 # ══════════════════════════════════════════════════════════════════════════════════
 
+def _voice_is_on(uid):
+    """Quick check: does this user have voice replies turned on?"""
+    try:
+        u = db.get_user(uid)
+        return bool(u.get("voice_reply", 0))
+    except Exception:
+        return False
+
+
 def _maybe_send_voice(chat_id, uid, text, force=False):
     """If the user has voice replies turned on (or force=True), synthesize
     the answer with Groq Orpheus TTS and send it as a Telegram voice note.
-    On failure this now tells the user directly instead of failing silently,
-    so a broken GROQ_API_KEY / TTS access issue is visible immediately
-    instead of looking like the feature 'does nothing'."""
+
+    Returns True if a voice note was successfully sent, False otherwise —
+    callers use this to decide whether to ALSO send the text (avoiding the
+    double text+voice reply users were getting before). On failure this
+    tells the user directly instead of failing silently.
+
+    Speed: text is trimmed hard (300 chars) before hitting the TTS API,
+    since Orpheus latency scales with input length and users want a
+    near-instant voice note, not a full essay read aloud."""
+    if not force and not _voice_is_on(uid):
+        return False
+    if not text or not text.strip():
+        return False
     try:
-        if not force:
-            u = db.get_user(uid)
-            if not u.get("voice_reply", 0):
-                return
-        if not text or not text.strip():
-            return
-        audio = NeuralEngine.call_groq_tts(text)
+        # Keep it short — a long voice note "lags" and isn't what people
+        # want from a quick reply. Full text is always still in the chat
+        # when the caller chooses to send it as a caption instead.
+        speak_text = text.strip()
+        if len(speak_text) > 300:
+            speak_text = speak_text[:300].rsplit(" ", 1)[0] + "..."
+
+        audio = NeuralEngine.call_groq_tts(speak_text)
         if not audio or len(audio) < 100:
-            bot.send_message(chat_id, "⚠️ Voice reply generate nahi ho saka (empty audio). Text jawab upar mojood hai.")
-            return
+            bot.send_message(chat_id, "⚠️ Voice reply generate nahi ho saka (empty audio).")
+            return False
+
         voice_file = BytesIO(audio)
         voice_file.name = "reply.wav"
-        bot.send_voice(chat_id, voice_file)
+        # Explicit short timeout on the Telegram upload itself — a hung
+        # upload used to surface as a 30s "Read timed out" error with no
+        # useful info. 15s is plenty for these short voice notes.
+        bot.send_voice(chat_id, voice_file, timeout=15)
+        return True
     except requests.exceptions.HTTPError as e:
         detail = ""
         try:
@@ -3188,9 +3295,11 @@ def _maybe_send_voice(chat_id, uid, text, force=False):
                 f"GROQ_API_KEY check karein.\n`{detail}`",
                 parse_mode="Markdown"
             )
+        return False
     except Exception as e:
         logger.warning(f"Voice reply failed: {e}")
         bot.send_message(chat_id, f"⚠️ Voice reply nahi ban saka: {e}")
+        return False
 
 
 def _send_chunks(chat_id, text, reply_to=None, chunk=4000):
@@ -3243,6 +3352,14 @@ def boot_sequence():
 ╚{'═'*63}╝
 """
     print(banner)
+    # Pre-fill the cached bot identity (id/username) so the very first
+    # group message doesn't have to wait on an extra get_me() API call.
+    try:
+        binfo = bot.get_me()
+        _BOT_ME["id"] = binfo.id
+        _BOT_ME["username"] = (binfo.username or "").lower()
+    except Exception as e:
+        logger.warning(f"Could not prefetch bot identity: {e}")
     # Notify admin the bot is alive, with the branded startup image if present.
     if ADMIN_ID:
         try:
